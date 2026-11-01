@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Coordinate Systems & Vector Visualisation Lab</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+  :root {
+    --bg-dark: #060911;
+    --panel-bg: #0f1523;
+    --panel-border: #222f49;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent: #00d2ff;
+    --accent-sec: #a855f7;
+    --x-col: #ff4d6d;
+    --y-col: #00f59b;
+    --z-col: #38bdf8;
+    --warn: #ffb703;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header & Module Navigation */
+  header {
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--panel-border);
+    padding: 6px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 20;
+    flex-shrink: 0;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--accent);
+    letter-spacing: 0.3px;
+  }
+  .brand span.sub {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 11.5px;
+  }
+  .module-bar {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .module-bar::-webkit-scrollbar { height: 4px; }
+  .module-bar::-webkit-scrollbar-thumb { background: #263554; border-radius: 2px; }
+  .mod-btn {
+    background: #090d16;
+    border: 1px solid #1e2940;
+    color: var(--text-muted);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .mod-btn:hover { color: var(--text-main); border-color: var(--accent); }
+  .mod-btn.active {
+    background: var(--accent);
+    color: #040811;
+    border-color: var(--accent);
+  }
+
+  .btn-sm {
+    background: #162035;
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    padding: 4px 9px;
+    border-radius: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.active-toggle {
+    background: rgba(0, 210, 255, 0.2);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Main Three-Column Workspace */
+  .app-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Left Control Panel */
+  .control-panel {
+    width: 350px;
+    min-width: 320px;
+    background: var(--panel-bg);
+    border-right: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  .control-panel::-webkit-scrollbar,
+  .explanation-panel::-webkit-scrollbar { width: 5px; }
+  .control-panel::-webkit-scrollbar-thumb,
+  .explanation-panel::-webkit-scrollbar-thumb { background: #283655; border-radius: 3px; }
+
+  /* Center 3D / 2D Visualisation Area */
+  .vis-area {
+    flex: 1;
+    position: relative;
+    background: radial-gradient(circle at center, #0d1526 0%, #050810 100%);
+    overflow: hidden;
+  }
+  #canvas-container {
+    width: 100%;
+    height: 100%;
+  }
+  #canvas-2d-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    z-index: 3;
+    cursor: grab;
+  }
+
+  /* Right Mathematical Explanation Panel */
+  .explanation-panel {
+    width: 340px;
+    min-width: 300px;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .panel-sec {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .sec-title {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Sliders & Inputs */
+  .slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 8px;
+  }
+  .slider-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    align-items: center;
+  }
+  .slider-head span.val {
+    font-family: var(--font-mono);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 5px;
+    cursor: pointer;
+  }
+  .num-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .num-box {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .num-box label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+  .num-box input, .full-input, select {
+    background: #070b13;
+    border: 1px solid #2b3958;
+    color: #fff;
+    padding: 5px 7px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+  }
+  .num-box input:focus, .full-input:focus { border-color: var(--accent); }
+
+  .chk-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .chk-lbl {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    cursor: pointer;
+    color: #dbe4f0;
+  }
+
+  /* Mathematical Readout Cards */
+  .math-card {
+    background: #080c15;
+    border: 1px solid #22304c;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .math-card h4 {
+    color: var(--accent);
+    font-size: 12.5px;
+    margin-bottom: 4px;
+  }
+  .formula-block {
+    background: #0d1322;
+    border-left: 3px solid var(--accent);
+    padding: 6px 9px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #a5f3fc;
+    margin: 5px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .warn-banner {
+    display: none;
+    background: rgba(255, 183, 3, 0.14);
+    border: 1px solid var(--warn);
+    color: #fde68a;
+    padding: 7px 9px;
+    border-radius: 5px;
+    font-size: 11.5px;
+    margin-top: 6px;
+  }
+  .err-banner {
+    display: none;
+    background: rgba(255, 77, 109, 0.15);
+    border: 1px solid var(--x-col);
+    color: #fda4af;
+    padding: 7px 9px;
+    border-radius: 5px;
+    font-size: 11.5px;
+    margin-top: 6px;
+  }
+
+  /* Floating Toolbars in Visualisation Area */
+  .vis-toolbar {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+    background: rgba(15, 21, 35, 0.92);
+    backdrop-filter: blur(8px);
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    z-index: 6;
+    flex-wrap: wrap;
+  }
+  .legend-box {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(15, 21, 35, 0.9);
+    backdrop-filter: blur(8px);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    font-size: 11.5px;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .leg-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 3px;
+    font-family: var(--font-mono);
+  }
+  .leg-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .status-bar {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(8, 12, 21, 0.94);
+    border: 1px solid var(--accent);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #f8fafc;
+    z-index: 6;
+  }
+
+  /* Table for Unit Vectors & Coordinate Comparison */
+  .vec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    margin-top: 6px;
+  }
+  .vec-table th, .vec-table td {
+    border: 1px solid #23304d;
+    padding: 4px 6px;
+    text-align: left;
+  }
+  .vec-table th {
+    background: #141d30;
+    color: var(--accent);
+  }
+
+  /* Custom Element List Item */
+  .el-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #131c2e;
+    border: 1px solid #243250;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    margin-bottom: 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="brand">
+      <span>3D COORDINATE SYSTEMS &amp; VECTOR LAB</span>
+      <span class="sub">Interactive 1D / 2D / 3D Physics &amp; Vector Calculus Visualiser</span>
+    </div>
+    <div style="display:flex; gap:6px; align-items:center;">
+      <button class="btn-sm" id="btn-angle-unit" onclick="toggleAngleUnit()">Angles: DEG (°)</button>
+      <button class="btn-sm" id="btn-cam-proj" onclick="toggleCameraProjection()">Camera: Perspective</button>
+      <button class="btn-sm" id="btn-anim-toggle" onclick="toggleAnimation()">▶ Animate Line</button>
+      <button class="btn-sm" onclick="resetPointToDefault()">Reset P(3,4,5)</button>
+    </div>
+  </div>
+
+  <!-- 10 Dedicated Learning Modules Bar -->
+  <div class="module-bar">
+    <button class="mod-btn active" id="mod-dim" onclick="selectModule('dim')">1. Dimensionality (1D/2D/3D)</button>
+    <button class="mod-btn" id="mod-cartesian" onclick="selectModule('cartesian')">2. Cartesian (x, y, z)</button>
+    <button class="mod-btn" id="mod-polar" onclick="selectModule('polar')">3. Polar 2D (r, θ)</button>
+    <button class="mod-btn" id="mod-cylindrical" onclick="selectModule('cylindrical')">4. Cylindrical (ρ, φ, z)</button>
+    <button class="mod-btn" id="mod-spherical" onclick="selectModule('spherical')">5. Spherical (r, θ, φ)</button>
+    <button class="mod-btn" id="mod-solidangle" onclick="selectModule('solidangle')">6. Solid Angle (Ω &amp; sr)</button>
+    <button class="mod-btn" id="mod-unitvec" onclick="selectModule('unitvec')">7. Unit Vectors Lab</button>
+    <button class="mod-btn" id="mod-builder" onclick="selectModule('builder')">8. Custom Builder &amp; JSON</button>
+    <button class="mod-btn" id="mod-compare" onclick="selectModule('compare')">9. Compare All Systems</button>
+    <button class="mod-btn" id="mod-physics" onclick="selectModule('physics')">10. Physics Applications</button>
+    <button class="mod-btn" id="mod-guided" onclick="selectModule('guided')">11. Guided Course (13 Lessons)</button>
+    <button class="mod-btn" id="mod-quiz" onclick="selectModule('quiz')">12. Challenge &amp; Quiz Mode</button>
+  </div>
+</header>
+
+<div class="app-body">
+  <!-- LEFT CONTROL PANEL -->
+  <aside class="control-panel">
+
+    <!-- UNIVERSAL PHYSICAL POINT P CONTROLLER -->
+    <div class="panel-sec" id="sec-point-controls">
+      <div class="sec-title">
+        <span>Physical Point P Location</span>
+        <span style="color:var(--accent); font-family:var(--font-mono);" id="lbl-point-summary">P(3.00, 4.00, 5.00)</span>
+      </div>
+
+      <!-- Coordinate Input Mode Selector -->
+      <div style="margin-bottom:8px; display:flex; gap:4px;">
+        <button class="btn-sm active-toggle" id="in-mode-cart" style="flex:1;" onclick="setInputCoordMode('cartesian')">Cartesian</button>
+        <button class="btn-sm" id="in-mode-cyl" style="flex:1;" onclick="setInputCoordMode('cylindrical')">Cylindrical</button>
+        <button class="btn-sm" id="in-mode-sph" style="flex:1;" onclick="setInputCoordMode('spherical')">Spherical</button>
+      </div>
+
+      <!-- Sliders for Active Input Coordinate Representation -->
+      <div id="sliders-cartesian">
+        <div class="slider-row">
+          <div class="slider-head"><span style="color:var(--x-col)">x-coordinate</span><span class="val" id="val-x">3.00</span></div>
+          <input type="range" id="rng-x" min="-8" max="8" step="0.05" value="3" oninput="onCartesianSlider()">
+        </div>
+        <div class="slider-row" id="row-slider-y">
+          <div class="slider-head"><span style="color:var(--y-col)">y-coordinate</span><span class="val" id="val-y">4.00</span></div>
+          <input type="range" id="rng-y" min="-8" max="8" step="0.05" value="4" oninput="onCartesianSlider()">
+        </div>
+        <div class="slider-row" id="row-slider-z">
+          <div class="slider-head"><span style="color:var(--z-col)">z-coordinate</span><span class="val" id="val-z">5.00</span></div>
+          <input type="range" id="rng-z" min="-8" max="8" step="0.05" value="5" oninput="onCartesianSlider()">
+        </div>
+      </div>
+
+      <div id="sliders-cylindrical" style="display:none;">
+        <div class="slider-row">
+          <div class="slider-head"><span style="color:#facc15">Radial ρ = √(x²+y²)</span><span class="val" id="val-rho">5.00</span></div>
+          <input type="range" id="rng-rho" min="0" max="10" step="0.05" value="5" oninput="onCylindricalSlider()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span style="color:#a855f7">Azimuth φ (or Polar θ)</span><span class="val" id="val-phi">53.13°</span></div>
+          <input type="range" id="rng-phi" min="-180" max="360" step="0.5" value="53.1301" oninput="onCylindricalSlider()">
+        </div>
+        <div class="slider-row" id="row-cyl-z">
+          <div class="slider-head"><span style="color:var(--z-col)">Height z</span><span class="val" id="val-cyl-z">5.00</span></div>
+          <input type="range" id="rng-cyl-z" min="-8" max="8" step="0.05" value="5" oninput="onCylindricalSlider()">
+        </div>
+      </div>
+
+      <div id="sliders-spherical" style="display:none;">
+        <div class="slider-row">
+          <div class="slider-head"><span style="color:#facc15">Radius r = √(x²+y²+z²)</span><span class="val" id="val-sph-r">7.07</span></div>
+          <input type="range" id="rng-sph-r" min="0" max="12" step="0.05" value="7.071" oninput="onSphericalSlider()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span style="color:#fb923c">Polar θ (from +z, 0..π)</span><span class="val" id="val-sph-theta">45.00°</span></div>
+          <input type="range" id="rng-sph-theta" min="0" max="180" step="0.5" value="45" oninput="onSphericalSlider()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span style="color:#a855f7">Azimuth φ (from +x)</span><span class="val" id="val-sph-phi">53.13°</span></div>
+          <input type="range" id="rng-sph-phi" min="0" max="360" step="0.5" value="53.1301" oninput="onSphericalSlider()">
+        </div>
+      </div>
+
+      <!-- Direct Numeric Entry Row (Accepts expressions like sqrt(50) or acos(5/sqrt(50))) -->
+      <div class="sec-title" style="margin-top:8px;"><span>Manual Coordinate / Expression Entry</span></div>
+      <div class="num-grid">
+        <div class="num-box">
+          <label id="lbl-in-1">x</label>
+          <input type="text" id="in-coord-1" value="3" onchange="onManualCoordSubmit()">
+        </div>
+        <div class="num-box">
+          <label id="lbl-in-2">y</label>
+          <input type="text" id="in-coord-2" value="4" onchange="onManualCoordSubmit()">
+        </div>
+        <div class="num-box">
+          <label id="lbl-in-3">z</label>
+          <input type="text" id="in-coord-3" value="5" onchange="onManualCoordSubmit()">
+        </div>
+      </div>
+      <button class="btn-sm" style="width:100%; background:var(--accent); color:#040811; font-weight:700;" onclick="onManualCoordSubmit()">Apply Coordinates to Point P</button>
+      <div id="singularity-banner" class="warn-banner"></div>
+      <div id="input-err-banner" class="err-banner"></div>
+    </div>
+
+    <!-- DYNAMIC MODULE-SPECIFIC CONTROLS -->
+    <div class="panel-sec" id="sec-module-controls">
+      <!-- Populated dynamically based on active module -->
+    </div>
+
+    <!-- GLOBAL VISIBILITY TOGGLES -->
+    <div class="panel-sec" style="border-bottom:none;">
+      <div class="sec-title"><span>Scene Elements Visibility</span></div>
+      <div class="chk-grid">
+        <label class="chk-lbl"><input type="checkbox" id="chk-pos-vec" checked onchange="refreshScene()"> Position Vector OP</label>
+        <label class="chk-lbl"><input type="checkbox" id="chk-projections" checked onchange="refreshScene()"> Projections</label>
+        <label class="chk-lbl"><input type="checkbox" id="chk-coord-lines" checked onchange="refreshScene()"> Coordinate Lines</label>
+        <label class="chk-lbl"><input type="checkbox" id="chk-coord-surfs" checked onchange="refreshScene()"> Coord Surfaces</label>
+        <label class="chk-lbl"><input type="checkbox" id="chk-unit-vecs" checked onchange="refreshScene()"> Basis Unit Vectors</label>
+        <label class="chk-lbl"><input type="checkbox" id="chk-cart-compare" onchange="refreshScene()"> Compare î, ĵ, k̂</label>
+        <label class="chk-lbl"><input type="checkbox" id="chk-labels" checked onchange="refreshScene()"> 3D Math Labels</label>
+        <label class="chk-lbl"><input type="checkbox" id="chk-grid" checked onchange="refreshScene()"> Axes &amp; Grid</label>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- CENTER VISUALISATION AREA -->
+  <main class="vis-area">
+    <canvas id="canvas-2d-overlay"></canvas>
+    <div id="canvas-container"></div>
+
+    <!-- Legend Box -->
+    <div class="legend-box" id="legend-box">
+      <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Visual Legend</div>
+      <div id="legend-content"></div>
+    </div>
+
+    <!-- Camera & Dimension Toolbar -->
+    <div class="vis-toolbar">
+      <button class="btn-sm" onclick="setCameraPreset('iso')">3D Isometric</button>
+      <button class="btn-sm" onclick="setCameraPreset('top')">Top (X-Y)</button>
+      <button class="btn-sm" onclick="setCameraPreset('front')">Front (X-Z)</button>
+      <button class="btn-sm" onclick="setCameraPreset('side')">Side (Y-Z)</button>
+      <button class="btn-sm" onclick="setCameraPreset('reset')">Reset View</button>
+    </div>
+
+    <!-- Bottom Live Coordinate Readout Bar -->
+    <div class="status-bar" id="status-bar">
+      Cartesian: (3.00, 4.00, 5.00) | Cylindrical: (ρ=5.00, φ=53.13°, z=5.00) | Spherical: (r=7.07, θ=45.00°, φ=53.13°)
+    </div>
+  </main>
+
+  <!-- RIGHT MATHEMATICAL EXPLANATION & CONVERSION PANEL -->
+  <aside class="explanation-panel">
+    <div class="panel-sec">
+      <div class="sec-title"><span>Live Coordinate Conversions</span></div>
+      <div class="math-card" id="card-conversions">
+        <!-- Populated in real time -->
+      </div>
+    </div>
+
+    <div class="panel-sec">
+      <div class="sec-title"><span>Orthonormal Unit Vectors at P</span></div>
+      <div class="math-card" id="card-unit-vectors">
+        <!-- Populated in real time -->
+      </div>
+    </div>
+
+    <div class="panel-sec" style="border-bottom:none;">
+      <div class="sec-title"><span>Physical &amp; Geometrical Intuition</span></div>
+      <div class="math-card" id="card-explanation">
+        <!-- Populated per module -->
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ============================================================================
+   1. MATHEMATICAL & COORDINATE CONVERSION ENGINE (STRICT PHYSICS CONVENTION)
+   Spherical Convention:
+   - r = √(x² + y² + z²) >= 0
+   - θ (polar angle from +z axis): 0 <= θ <= π, θ = arccos(z / r)
+   - φ (azimuthal angle in xy-plane from +x axis): 0 <= φ < 2π (or atan2(y,x))
+   ============================================================================ */
+const state = {
+  activeModule: 'dim', // 'dim'|'cartesian'|'polar'|'cylindrical'|'spherical'|'solidangle'|'unitvec'|'builder'|'compare'|'physics'|'guided'|'quiz'
+  dimMode: 3,          // 1, 2, or 3 (for Module 1 & 2)
+  inputMode: 'cartesian', // 'cartesian'|'cylindrical'|'spherical'
+  useDegrees: true,
+  orthoCamera: false,
+
+  // Single ground-truth physical point in Cartesian coordinates
+  x: 3.0,
+  y: 4.0,
+  z: 5.0,
+
+  // Coordinate Surfaces toggles & slider constants
+  surfXOn: false, surfXVal: 3.0,
+  surfYOn: false, surfYVal: 4.0,
+  surfZOn: false, surfZVal: 5.0,
+  surfRhoOn: true, surfRhoVal: 5.0,
+  surfPhiOn: false, surfPhiVal: 53.1301, // deg
+  surfSphROn: true, surfSphRVal: 7.0711,
+  surfSphThetaOn: false, surfSphThetaVal: 45.0, // deg
+
+  // Projections toggles
+  projXY: true,
+  projYZ: false,
+  projXZ: false,
+  projAxes: true,
+
+  // Solid Angle (Module 6) state
+  solidSubmode: 'cone', // 'cone' | 'patch'
+  coneHalfAngleDeg: 60.0,
+  sphereRadiusR: 4.0,
+  patchDistR: 4.5,
+  patchTiltGammaDeg: 30.0,
+  patchAreaDA: 1.5,
+
+  // Unit Vector Orthogonality pair selector (Module 7)
+  orthoPair: '1-2', // '1-2', '2-3', '1-3', '1-1'
+  showCartComponents: false,
+
+  // Custom Builder (Module 8)
+  customElements: [],
+
+  // Physics Applications (Module 10)
+  physApp: 'circular', // 'linear'|'circular'|'helical'|'planetary'|'efield'|'bfield'|'flux'
+
+  // Guided Lesson index (Module 11)
+  lessonIdx: 0,
+
+  // Quiz state (Module 12)
+  quizIdx: 0,
+  quizScore: 0,
+  quizAttempted: false,
+
+  // Animation along coordinate lines
+  animating: false,
+  animTarget: 'phi', // 'x'|'y'|'z'|'rho'|'phi'|'r'|'theta'
+  animTime: 0
+};
+
+// Safe expression evaluator for inputs like "sqrt(50)", "acos(5/sqrt(50))", "atan2(4,3)", "5*pi/4"
+function evalMathInput(str, isAngleField = false) {
+  let s = String(str).trim()
+    .replace(/−/g, '-')
+    .replace(/√\s*\(/g, 'Math.sqrt(')
+    .replace(/√([0-9.]+)/g, 'Math.sqrt($1)')
+    .replace(/\bpi\b|π/gi, 'Math.PI')
+    .replace(/\bsqrt\s*\(/gi, 'Math.sqrt(')
+    .replace(/\bsin\s*\(/gi, 'Math.sin(')
+    .replace(/\bcos\s*\(/gi, 'Math.cos(')
+    .replace(/\btan\s*\(/gi, 'Math.tan(')
+    .replace(/\barccos\s*\(|\bacos\s*\(/gi, 'Math.acos(')
+    .replace(/\barcsin\s*\(|\basin\s*\(/gi, 'Math.asin(')
+    .replace(/\barctan\s*\(|\batan\s*\(/gi, 'Math.atan(')
+    .replace(/\batan2\s*\(/gi, 'Math.atan2(')
+    .replace(/\^/g, '**');
+
+  if (!/^[0-9.+\-*/(),\sMathPIsqrtincoatan2**]+$/.test(s)) {
+    throw new Error(`Invalid numeric expression: "${str}"`);
+  }
+  const val = Function(`"use strict"; return (${s});`)();
+  if (typeof val !== 'number' || !isFinite(val)) {
+    throw new Error(`Expression "${str}" evaluated to an undefined number.`);
+  }
+  // If user entered an inverse trig formula like acos(5/sqrt(50)) which returns radians
+  // while display is in Degrees, detect if raw string used acos/asin/atan2
+  if (isAngleField && state.useDegrees && /acos|asin|atan/i.test(str)) {
+    return val * (180 / Math.PI);
+  }
+  return val;
+}
+
+function degToRad(d) { return d * Math.PI / 180; }
+function radToDeg(r) { return r * 180 / Math.PI; }
+function formatAngle(rad) {
+  if ( isNaN(rad) ) return 'Undefined';
+  return state.useDegrees ? `${radToDeg(rad).toFixed(2)}°` : `${rad.toFixed(4)} rad`;
+}
+
+// Compute all coordinate representations & orthonormal basis vectors at (x, y, z)
+function getPointData(x, y, z) {
+  const rho = Math.hypot(x, y);
+  const r = Math.hypot(x, y, z);
+  const onZAxis = rho < 1e-7;
+  const atOrigin = r < 1e-7;
+
+  // Azimuthal angle phi in (-pi, pi] and normalized [0, 2pi)
+  const phiRad = onZAxis ? 0 : Math.atan2(y, x);
+  const phiPosRad = phiRad < 0 ? phiRad + 2 * Math.PI : phiRad;
+
+  // Spherical polar angle theta in [0, pi]
+  const thetaRad = atOrigin ? 0 : Math.acos(Math.max(-1, Math.min(1, z / r)));
+
+  // Unit vectors in Cartesian components (î, ĵ, k̂)
+  const cPhi = Math.cos(phiRad), sPhi = Math.sin(phiRad);
+  const cTheta = Math.cos(thetaRad), sTheta = Math.sin(thetaRad);
+
+  const iHat = { x: 1, y: 0, z: 0 };
+  const jHat = { x: 0, y: 1, z: 0 };
+  const kHat = { x: 0, y: 0, z: 1 };
+
+  const rhoHat = { x: cPhi, y: sPhi, z: 0 };
+  const phiHat = { x: -sPhi, y: cPhi, z: 0 };
+  const zHat = { x: 0, y: 0, z: 1 };
+
+  const rHat = atOrigin ? { x: 0, y: 0, z: 1 } : { x: sTheta * cPhi, y: sTheta * sPhi, z: cTheta };
+  const thetaHat = { x: cTheta * cPhi, y: cTheta * sPhi, z: -sTheta };
+
+  return {
+    x, y, z,
+    rho, r,
+    phiRad, phiPosRad, thetaRad,
+    onZAxis, atOrigin,
+    basis: { iHat, jHat, kHat, rhoHat, phiHat, zHat, rHat, thetaHat }
+  };
+}
+
+/* ============================================================================
+   2. THREE.JS 3D SCENE SETUP (Z-UP SCIENTIFIC CONVENTION)
+   ============================================================================ */
+let scene, camera, perspCam, orthoCam, renderer, controls;
+let axesGroup, mainVisGroup, customGroup, labelSprites = [];
+
+function initThreeJS() {
+  const container = document.getElementById('canvas-container');
+  const w = container.clientWidth, h = container.clientHeight;
+  scene = new THREE.Scene();
+
+  perspCam = new THREE.PerspectiveCamera(42, w / h, 0.1, 1000);
+  perspCam.up.set(0, 0, 1);
+  perspCam.position.set(14, -14, 10);
+
+  const aspect = w / h;
+  const frustum = 11;
+  orthoCam = new THREE.OrthographicCamera(-frustum * aspect, frustum * aspect, frustum, -frustum, -200, 500);
+  orthoCam.up.set(0, 0, 1);
+  orthoCam.position.copy(perspCam.position);
+
+  camera = perspCam;
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+
+  const amb = new THREE.AmbientLight(0xffffff, 0.72);
+  scene.add(amb);
+  const dir1 = new THREE.DirectionalLight(0xffffff, 0.75);
+  dir1.position.set(18, -18, 24);
+  scene.add(dir1);
+  const dir2 = new THREE.DirectionalLight(0x90caf9, 0.4);
+  dir2.position.set(-16, 16, -12);
+  scene.add(dir2);
+
+  axesGroup = new THREE.Group();
+  mainVisGroup = new THREE.Group();
+  customGroup = new THREE.Group();
+  scene.add(axesGroup);
+  scene.add(mainVisGroup);
+  scene.add(customGroup);
+
+  window.addEventListener('resize', onWindowResize);
+}
+
+function onWindowResize() {
+  const container = document.getElementById('canvas-container');
+  if (!container) return;
+  const w = container.clientWidth, h = container.clientHeight;
+  perspCam.aspect = w / h;
+  perspCam.updateProjectionMatrix();
+
+  const aspect = w / h, frustum = 11;
+  orthoCam.left = -frustum * aspect;
+  orthoCam.right = frustum * aspect;
+  orthoCam.top = frustum;
+  orthoCam.bottom = -frustum;
+  orthoCam.updateProjectionMatrix();
+
+  renderer.setSize(w, h);
+}
+
+function clearGroup(grp) {
+  while (grp.children.length > 0) {
+    const obj = grp.children[0];
+    grp.remove(obj);
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+      else obj.material.dispose();
+    }
+  }
+}
+
+/* ============================================================================
+   3. HIGH-CONTRAST 3D LABELS, ARROWS, ARCS & COORDINATE AXES
+   ============================================================================ */
+function makeLabel(text, colorStr = '#f8fafc', scale = 1.0) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 110;
+  const ctx = canvas.getContext('2d');
+  ctx.font = 'bold 42px Inter, Consolas, sans-serif';
+  ctx.strokeStyle = 'rgba(5, 8, 16, 0.92)';
+  ctx.lineWidth = 8;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.strokeText(text, 160, 55);
+  ctx.fillStyle = colorStr;
+  ctx.fillText(text, 160, 55);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(1.55 * scale, 0.53 * scale, 1);
+  sprite.renderOrder = 30;
+  return sprite;
+}
+
+function makeVectorArrow(origin, dirVec, length, colorHex, labelText = '', dashed = false) {
+  const grp = new THREE.Group();
+  const dir = new THREE.Vector3(dirVec.x, dirVec.y, dirVec.z);
+  if (dir.lengthSq() < 1e-9 || length < 1e-4) return grp;
+  dir.normalize();
+
+  const start = new THREE.Vector3(origin.x, origin.y, origin.z);
+  const end = start.clone().addScaledVector(dir, length);
+
+  const shaftRadius = 0.038;
+  const headLen = Math.min(length * 0.28, 0.36);
+  const headRadius = 0.11;
+
+  const shaftLen = Math.max(0.01, length - headLen);
+  const shaftMid = start.clone().addScaledVector(dir, shaftLen / 2);
+
+  const shaftGeo = new THREE.CylinderGeometry(shaftRadius, shaftRadius, shaftLen, 12);
+  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+  const shaft = new THREE.Mesh(shaftGeo, mat);
+  shaft.quaternion.copy(quat);
+  shaft.position.copy(shaftMid);
+  grp.add(shaft);
+
+  const coneGeo = new THREE.ConeGeometry(headRadius, headLen, 14);
+  const cone = new THREE.Mesh(coneGeo, mat);
+  cone.quaternion.copy(quat);
+  cone.position.copy(start.clone().addScaledVector(dir, shaftLen + headLen / 2));
+  grp.add(cone);
+
+  if (labelText && document.getElementById('chk-labels').checked) {
+    const lbl = makeLabel(labelText, '#' + colorHex.toString(16).padStart(6, '0'), 0.85);
+    lbl.position.copy(end.clone().addScaledVector(dir, 0.35));
+    grp.add(lbl);
+  }
+  return grp;
+}
+
+function makeDashedSegment(p1, p2, colorHex = 0x94a3b8) {
+  const geo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(p1.x, p1.y, p1.z),
+    new THREE.Vector3(p2.x, p2.y, p2.z)
+  ]);
+  const mat = new THREE.LineDashedMaterial({ color: colorHex, dashSize: 0.22, gapSize: 0.14 });
+  const line = new THREE.Line(geo, mat);
+  line.computeLineDistances();
+  return line;
+}
+
+function buildAxesAndGrid() {
+  clearGroup(axesGroup);
+  if (!document.getElementById('chk-grid').checked) return;
+
+  const L = 8;
+  const is1D = (state.activeModule === 'dim' && state.dimMode === 1) || (state.activeModule === 'cartesian' && state.dimMode === 1);
+  const is2D = (state.activeModule === 'dim' && state.dimMode === 2) ||
+               (state.activeModule === 'cartesian' && state.dimMode === 2) ||
+               state.activeModule === 'polar';
+
+  // Build 1x1 unit square grid in XY plane (for 2D and 3D)
+  if (!is1D) {
+    const subVerts = [], majVerts = [];
+    const zOff = -0.01;
+    for (let u = -L; u <= L + 0.001; u += 0.5) {
+      const isInt = Math.abs(u - Math.round(u)) < 1e-4;
+      const v = isInt ? Math.round(u) : u;
+      if (Math.abs(v) < 1e-4) continue;
+      if (isInt) {
+        majVerts.push(-L, v, zOff, L, v, zOff, v, -L, zOff, v, L, zOff);
+      } else {
+        subVerts.push(-L, v, zOff, L, v, zOff, v, -L, zOff, v, L, zOff);
+      }
+    }
+    const subGeo = new THREE.BufferGeometry();
+    subGeo.setAttribute('position', new THREE.Float32BufferAttribute(subVerts, 3));
+    axesGroup.add(new THREE.LineSegments(subGeo, new THREE.LineBasicMaterial({ color: 0x131d31, transparent: true, opacity: 0.7 })));
+
+    const majGeo = new THREE.BufferGeometry();
+    majGeo.setAttribute('position', new THREE.Float32BufferAttribute(majVerts, 3));
+    axesGroup.add(new THREE.LineSegments(majGeo, new THREE.LineBasicMaterial({ color: 0x263859, transparent: true, opacity: 0.9 })));
+  }
+
+  const axisLen = L + 1.2;
+  const rCyl = 0.025;
+
+  // X Axis (Red)
+  const xGeo = new THREE.CylinderGeometry(rCyl, rCyl, axisLen * 2, 10);
+  xGeo.rotateZ(-Math.PI / 2);
+  axesGroup.add(new THREE.Mesh(xGeo, new THREE.MeshBasicMaterial({ color: 0xff4d6d })));
+  const xLbl = makeLabel('+X', '#ff4d6d', 0.9);
+  xLbl.position.set(axisLen + 0.45, 0, 0);
+  axesGroup.add(xLbl);
+
+  if (is1D) {
+    const nxLbl = makeLabel('-X', '#ff4d6d', 0.9);
+    nxLbl.position.set(-axisLen - 0.45, 0, 0);
+    axesGroup.add(nxLbl);
+  }
+
+  // Y Axis (Green)
+  if (!is1D) {
+    const yGeo = new THREE.CylinderGeometry(rCyl, rCyl, axisLen * 2, 10);
+    axesGroup.add(new THREE.Mesh(yGeo, new THREE.MeshBasicMaterial({ color: 0x00f59b })));
+    const yLbl = makeLabel('+Y', '#00f59b', 0.9);
+    yLbl.position.set(0, axisLen + 0.45, 0);
+    axesGroup.add(yLbl);
+  }
+
+  // Z Axis (Blue)
+  if (!is1D && !is2D) {
+    const zGeo = new THREE.CylinderGeometry(rCyl, rCyl, axisLen * 2, 10);
+    zGeo.rotateX(Math.PI / 2);
+    axesGroup.add(new THREE.Mesh(zGeo, new THREE.MeshBasicMaterial({ color: 0x38bdf8 })));
+    const zLbl = makeLabel('+Z', '#38bdf8', 0.9);
+    zLbl.position.set(0, 0, axisLen + 0.45);
+    axesGroup.add(zLbl);
+  }
+
+  // Integer Tick Numbers (1, 2, 3, 4, 5...)
+  for (let i = -L; i <= L; i++) {
+    if (i === 0) continue;
+    const tx = makeLabel(String(i), '#cbd5e1', 0.62);
+    tx.position.set(i, -0.35, 0);
+    axesGroup.add(tx);
+    if (!is1D) {
+      const ty = makeLabel(String(i), '#cbd5e1', 0.62);
+      ty.position.set(-0.35, i, 0);
+      axesGroup.add(ty);
+    }
+    if (!is1D && !is2D && i % 2 === 0) {
+      const tz = makeLabel(String(i), '#7dd3fc', 0.6);
+      tz.position.set(-0.35, 0, i);
+      axesGroup.add(tz);
+    }
+  }
+}
+
+/* ============================================================================
+   4. SCENE RENDERERS FOR ALL 12 MODULES
+   ============================================================================ */
+function refreshScene() {
+  clearGroup(mainVisGroup);
+  buildAxesAndGrid();
+
+  // Enforce 1D or 2D projections when in 1D/2D modes
+  let px = state.x, py = state.y, pz = state.z;
+  const is1D = (state.activeModule === 'dim' && state.dimMode === 1) || (state.activeModule === 'cartesian' && state.dimMode === 1);
+  const is2D = (state.activeModule === 'dim' && state.dimMode === 2) ||
+               (state.activeModule === 'cartesian' && state.dimMode === 2) ||
+               state.activeModule === 'polar';
+
+  if (is1D) { py = 0; pz = 0; }
+  else if (is2D) { pz = 0; }
+
+  const pData = getPointData(px, py, pz);
+
+  // Singularity warning check
+  const warnEl = document.getElementById('singularity-banner');
+  if (pData.atOrigin) {
+    warnEl.style.display = 'block';
+    warnEl.textContent = 'Coordinate Singularity at Origin (0,0,0): Angles θ and φ are undefined/non-unique because r = 0.';
+  } else if (pData.onZAxis && (state.activeModule === 'cylindrical' || state.activeModule === 'spherical')) {
+    warnEl.style.display = 'block';
+    warnEl.textContent = 'Polar-Axis Singularity (x=0, y=0): Azimuthal angle φ is non-unique along the z-axis (ρ = 0).';
+  } else {
+    warnEl.style.display = 'none';
+  }
+
+  // Special Module 6: Solid Angle
+  if (state.activeModule === 'solidangle') {
+    renderSolidAngleModule();
+    updateSidePanels(pData);
+    return;
+  }
+
+  // Special Module 10: Physics Applications
+  if (state.activeModule === 'physics') {
+    renderPhysicsModule(pData);
+    updateSidePanels(pData);
+    return;
+  }
+
+  // 1. Draw Movable Point P (Crisp Core + Halo)
+  const ptGroup = new THREE.Group();
+  ptGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 20), new THREE.MeshBasicMaterial({ color: 0xffffff })));
+  ptGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 20), new THREE.MeshBasicMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.85 })));
+  ptGroup.position.set(px, py, pz);
+  mainVisGroup.add(ptGroup);
+
+  if (document.getElementById('chk-labels').checked) {
+    const pLbl = makeLabel(`P(${px.toFixed(1)}, ${py.toFixed(1)}, ${pz.toFixed(1)})`, '#00d2ff', 0.9);
+    pLbl.position.set(px, py, pz + 0.55);
+    mainVisGroup.add(pLbl);
+  }
+
+  // 2. Position Vector OP
+  if (document.getElementById('chk-pos-vec').checked && pData.r > 1e-4) {
+    mainVisGroup.add(makeVectorArrow({ x: 0, y: 0, z: 0 }, { x: px, y: py, z: pz }, pData.r, 0xffffff, 'r (OP)'));
+  }
+
+  // 3. Coordinate Projections (Planes & Axes)
+  if (document.getElementById('chk-projections').checked) {
+    if (is1D) {
+      // 1D Number line unit vectors +î and -î
+      mainVisGroup.add(makeVectorArrow({ x: 0, y: 0.4, z: 0 }, { x: 1, y: 0, z: 0 }, 1.0, 0x00f59b, '+î'));
+      mainVisGroup.add(makeVectorArrow({ x: 0, y: 0.4, z: 0 }, { x: -1, y: 0, z: 0 }, 1.0, 0xff4d6d, '-î'));
+    } else if (is2D) {
+      mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: 0 }, { x: px, y: 0, z: 0 }, 0xff4d6d));
+      mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: 0 }, { x: 0, y: py, z: 0 }, 0x00f59b));
+      // Angle arc theta in XY plane
+      drawAzimuthArc(pData.phiPosRad, Math.min(1.8, pData.rho * 0.45), 0xa855f7, 'θ');
+    } else {
+      // 3D Projections onto xy, yz, xz planes and axes
+      if (state.projXY) {
+        mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: pz }, { x: px, y: py, z: 0 }, 0x38bdf8));
+        mainVisGroup.add(makeDashedSegment({ x: 0, y: 0, z: 0 }, { x: px, y: py, z: 0 }, 0xfacc15));
+        const shadowXY = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 14), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+        shadowXY.position.set(px, py, 0);
+        mainVisGroup.add(shadowXY);
+      }
+      if (state.projAxes) {
+        mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: 0 }, { x: px, y: 0, z: 0 }, 0xff4d6d));
+        mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: 0 }, { x: 0, y: py, z: 0 }, 0x00f59b));
+        mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: pz }, { x: 0, y: 0, z: pz }, 0x38bdf8));
+      }
+      if (state.projYZ) {
+        mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: pz }, { x: 0, y: py, z: pz }, 0xff4d6d));
+      }
+      if (state.projXZ) {
+        mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: pz }, { x: px, y: 0, z: pz }, 0x00f59b));
+      }
+      // Azimuthal arc phi in XY plane & polar arc theta from +Z axis
+      if (pData.rho > 0.2) {
+        drawAzimuthArc(pData.phiPosRad, Math.min(2.0, pData.rho * 0.45), 0xa855f7, 'φ');
+      }
+      if (state.activeModule === 'spherical' || state.activeModule === 'compare') {
+        drawPolarThetaArc(pData.thetaRad, pData.phiRad, Math.min(2.2, pData.r * 0.4), 0xfb923c, 'θ');
+      }
+    }
+  }
+
+  // 4. Coordinate Lines through P
+  if (document.getElementById('chk-coord-lines').checked && !is1D) {
+    renderCoordinateLinesForActiveSystem(pData, is2D);
+  }
+
+  // 5. Coordinate Surfaces (Planes, Cylinders, Cones, Spheres)
+  if (document.getElementById('chk-coord-surfs').checked && !is1D) {
+    renderCoordinateSurfacesForActiveSystem(pData, is2D);
+  }
+
+  // 6. Orthonormal Basis Unit Vectors at P
+  if (document.getElementById('chk-unit-vecs').checked) {
+    renderUnitVectorsAtP(pData, is1D, is2D);
+  }
+
+  updateSidePanels(pData);
+}
+
+function drawAzimuthArc(phiRad, radius, colorHex, labelStr) {
+  if (Math.abs(phiRad) < 0.03 || radius < 0.1) return;
+  const pts = [];
+  const steps = 40;
+  for (let i = 0; i <= steps; i++) {
+    const a = (phiRad * i) / steps;
+    pts.push(new THREE.Vector3(radius * Math.cos(a), radius * Math.sin(a), 0.02));
+  }
+  mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: colorHex })));
+  if (document.getElementById('chk-labels').checked) {
+    const mid = phiRad / 2;
+    const lbl = makeLabel(labelStr, '#' + colorHex.toString(16).padStart(6, '0'), 0.75);
+    lbl.position.set((radius + 0.35) * Math.cos(mid), (radius + 0.35) * Math.sin(mid), 0.1);
+    mainVisGroup.add(lbl);
+  }
+}
+
+function drawPolarThetaArc(thetaRad, phiRad, radius, colorHex, labelStr) {
+  if (thetaRad < 0.03 || radius < 0.1) return;
+  const pts = [];
+  const steps = 36;
+  for (let i = 0; i <= steps; i++) {
+    const t = (thetaRad * i) / steps;
+    pts.push(new THREE.Vector3(
+      radius * Math.sin(t) * Math.cos(phiRad),
+      radius * Math.sin(t) * Math.sin(phiRad),
+      radius * Math.cos(t)
+    ));
+  }
+  mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: colorHex })));
+  if (document.getElementById('chk-labels').checked) {
+    const mid = thetaRad / 2;
+    const lbl = makeLabel(labelStr, '#' + colorHex.toString(16).padStart(6, '0'), 0.75);
+    lbl.position.set(
+      (radius + 0.35) * Math.sin(mid) * Math.cos(phiRad),
+      (radius + 0.35) * Math.sin(mid) * Math.sin(phiRad),
+      (radius + 0.35) * Math.cos(mid)
+    );
+    mainVisGroup.add(lbl);
+  }
+}
+
+function renderCoordinateLinesForActiveSystem(p, is2D) {
+  const L = 8;
+  const mod = state.activeModule;
+
+  // Cartesian coordinate lines (x-line, y-line, z-line intersecting at P)
+  if (mod === 'cartesian' || mod === 'dim' || mod === 'compare') {
+    const xLine = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-L, p.y, p.z), new THREE.Vector3(L, p.y, p.z)]);
+    mainVisGroup.add(new THREE.Line(xLine, new THREE.LineBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.55 })));
+    const yLine = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x, -L, p.z), new THREE.Vector3(p.x, L, p.z)]);
+    mainVisGroup.add(new THREE.Line(yLine, new THREE.LineBasicMaterial({ color: 0x00f59b, transparent: true, opacity: 0.55 })));
+    if (!is2D) {
+      const zLine = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x, p.y, -L), new THREE.Vector3(p.x, p.y, L)]);
+      mainVisGroup.add(new THREE.Line(zLine, new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55 })));
+    }
+  }
+
+  // Polar / Cylindrical coordinate lines: radial ray, circle of radius rho at height z, vertical z line
+  if (mod === 'polar' || mod === 'cylindrical' || mod === 'compare') {
+    // 1. Circle r/rho = const at height z
+    if (p.rho > 0.05) {
+      const cPts = [];
+      for (let i = 0; i <= 90; i++) {
+        const a = (2 * Math.PI * i) / 90;
+        cPts.push(new THREE.Vector3(p.rho * Math.cos(a), p.rho * Math.sin(a), p.z));
+      }
+      mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(cPts), new THREE.LineBasicMaterial({ color: 0xa855f7 })));
+    }
+    // 2. Radial ray phi = const at height z
+    const rPts = [
+      new THREE.Vector3(0, 0, p.z),
+      new THREE.Vector3(L * Math.cos(p.phiRad), L * Math.sin(p.phiRad), p.z)
+    ];
+    mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rPts), new THREE.LineBasicMaterial({ color: 0xfacc15 })));
+    // 3. Vertical line (for cylindrical)
+    if (!is2D) {
+      const zPts = [new THREE.Vector3(p.x, p.y, -L), new THREE.Vector3(p.x, p.y, L)];
+      mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(zPts), new THREE.LineBasicMaterial({ color: 0x38bdf8 })));
+    }
+  }
+
+  // Spherical coordinate lines: radial ray, meridian arc (theta varies), latitude circle (phi varies)
+  if (mod === 'spherical' || mod === 'compare') {
+    if (p.r > 0.05) {
+      // 1. Radial line
+      const radDir = p.basis.rHat;
+      const rPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(radDir.x * L * 1.2, radDir.y * L * 1.2, radDir.z * L * 1.2)];
+      mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rPts), new THREE.LineBasicMaterial({ color: 0xfacc15 })));
+
+      // 2. Meridian semicircle (theta from 0 to pi at fixed r and phi)
+      const mPts = [];
+      for (let i = 0; i <= 60; i++) {
+        const t = (Math.PI * i) / 60;
+        mPts.push(new THREE.Vector3(
+          p.r * Math.sin(t) * Math.cos(p.phiRad),
+          p.r * Math.sin(t) * Math.sin(p.phiRad),
+          p.r * Math.cos(t)
+        ));
+      }
+      mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(mPts), new THREE.LineBasicMaterial({ color: 0xfb923c })));
+
+      // 3. Azimuthal latitude circle (phi from 0 to 2pi at fixed r and theta)
+      const latPts = [];
+      for (let i = 0; i <= 90; i++) {
+        const a = (2 * Math.PI * i) / 90;
+        latPts.push(new THREE.Vector3(p.rho * Math.cos(a), p.rho * Math.sin(a), p.z));
+      }
+      mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(latPts), new THREE.LineBasicMaterial({ color: 0xa855f7 })));
+    }
+  }
+}
+
+function renderCoordinateSurfacesForActiveSystem(p, is2D) {
+  const L = 8;
+  const mod = state.activeModule;
+
+  // Cartesian Planes: x = c, y = c, z = c
+  if (mod === 'cartesian' || mod === 'compare') {
+    if (state.surfXOn) {
+      const g = new THREE.PlaneGeometry(2 * L, 2 * L);
+      const m = new THREE.MeshBasicMaterial({ color: 0xff4d6d, side: THREE.DoubleSide, transparent: true, opacity: 0.18, depthWrite: false });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.rotation.y = Math.PI / 2;
+      mesh.position.set(state.surfXVal, 0, 0);
+      mainVisGroup.add(mesh);
+    }
+    if (state.surfYOn) {
+      const g = new THREE.PlaneGeometry(2 * L, 2 * L);
+      const m = new THREE.MeshBasicMaterial({ color: 0x00f59b, side: THREE.DoubleSide, transparent: true, opacity: 0.18, depthWrite: false });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.rotation.x = Math.PI / 2;
+      mesh.position.set(0, state.surfYVal, 0);
+      mainVisGroup.add(mesh);
+    }
+    if (state.surfZOn && !is2D) {
+      const g = new THREE.PlaneGeometry(2 * L, 2 * L);
+      const m = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.18, depthWrite: false });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.position.set(0, 0, state.surfZVal);
+      mainVisGroup.add(mesh);
+    }
+  }
+
+  // Cylindrical Surfaces: Cylinder rho = const, Half-plane phi = const, Horizontal plane z = const
+  if (mod === 'cylindrical') {
+    if (state.surfRhoOn && state.surfRhoVal > 0.05) {
+      const cylGeo = new THREE.CylinderGeometry(state.surfRhoVal, state.surfRhoVal, 2 * L, 48, 1, true);
+      cylGeo.rotateX(Math.PI / 2);
+      const cylMat = new THREE.MeshPhongMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.2, depthWrite: false });
+      mainVisGroup.add(new THREE.Mesh(cylGeo, cylMat));
+    }
+    if (state.surfPhiOn) {
+      const phiR = degToRad(state.surfPhiVal);
+      const halfPlane = new THREE.PlaneGeometry(L, 2 * L);
+      halfPlane.translate(L / 2, 0, 0);
+      halfPlane.rotateX(Math.PI / 2);
+      halfPlane.rotateZ(phiR);
+      const pMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.22, depthWrite: false });
+      mainVisGroup.add(new THREE.Mesh(halfPlane, pMat));
+    }
+    if (state.surfZOn) {
+      const g = new THREE.PlaneGeometry(2 * L, 2 * L);
+      const m = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.18, depthWrite: false });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.position.set(0, 0, state.surfZVal);
+      mainVisGroup.add(mesh);
+    }
+  }
+
+  // Spherical Surfaces: Sphere r = const, Cone theta = const, Half-plane phi = const
+  if (mod === 'spherical') {
+    if (state.surfSphROn && state.surfSphRVal > 0.05) {
+      const sphGeo = new THREE.SphereGeometry(state.surfSphRVal, 40, 30);
+      const sphMat = new THREE.MeshPhongMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.18, depthWrite: false });
+      mainVisGroup.add(new THREE.Mesh(sphGeo, sphMat));
+    }
+    if (state.surfSphThetaOn) {
+      const tRad = degToRad(state.surfSphThetaVal);
+      if (Math.abs(tRad - Math.PI / 2) < 0.03) {
+        // Limiting case theta = 90 deg is the XY plane
+        const g = new THREE.PlaneGeometry(2 * L, 2 * L);
+        mainVisGroup.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xfb923c, side: THREE.DoubleSide, transparent: true, opacity: 0.2, depthWrite: false })));
+      } else if (tRad > 0.03 && tRad < Math.PI - 0.03) {
+        const coneH = L * 0.9;
+        const coneR = Math.min(L * 1.2, Math.abs(coneH * Math.tan(tRad)));
+        const coneGeo = new THREE.ConeGeometry(coneR, coneH, 48, 1, true);
+        coneGeo.translate(0, -coneH / 2, 0);
+        coneGeo.rotateX(tRad < Math.PI / 2 ? -Math.PI / 2 : Math.PI / 2);
+        const coneMat = new THREE.MeshPhongMaterial({ color: 0xfb923c, side: THREE.DoubleSide, transparent: true, opacity: 0.22, depthWrite: false });
+        mainVisGroup.add(new THREE.Mesh(coneGeo, coneMat));
+      }
+    }
+    if (state.surfPhiOn) {
+      const phiR = degToRad(state.surfPhiVal);
+      const halfPlane = new THREE.PlaneGeometry(L, 2 * L);
+      halfPlane.translate(L / 2, 0, 0);
+      halfPlane.rotateX(Math.PI / 2);
+      halfPlane.rotateZ(phiR);
+      const pMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.22, depthWrite: false });
+      mainVisGroup.add(new THREE.Mesh(halfPlane, pMat));
+    }
+  }
+}
+
+function renderUnitVectorsAtP(p, is1D, is2D) {
+  const origin = { x: p.x, y: p.y, z: p.z };
+  const len = 1.65;
+  const mod = state.activeModule;
+  const compareCart = document.getElementById('chk-cart-compare').checked;
+
+  // Always show Cartesian basis if in Cartesian mode or Compare toggle is active
+  if (mod === 'cartesian' || mod === 'dim' || compareCart || (mod === 'unitvec' && state.inputMode === 'cartesian')) {
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.iHat, len, 0xff4d6d, 'î'));
+    if (!is1D) mainVisGroup.add(makeVectorArrow(origin, p.basis.jHat, len, 0x00f59b, 'ĵ'));
+    if (!is1D && !is2D) mainVisGroup.add(makeVectorArrow(origin, p.basis.kHat, len, 0x38bdf8, 'k̂'));
+  }
+
+  // Polar 2D unit vectors r̂ and θ̂
+  if (mod === 'polar') {
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.rhoHat, len, 0xfacc15, 'r̂'));
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.phiHat, len, 0xa855f7, 'θ̂'));
+  }
+
+  // Cylindrical unit vectors ρ̂, φ̂, ẑ
+  if (mod === 'cylindrical' || mod === 'compare' || (mod === 'unitvec' && state.inputMode === 'cylindrical')) {
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.rhoHat, len, 0xfacc15, 'ρ̂'));
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.phiHat, len, 0xa855f7, 'φ̂'));
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.zHat, len, 0x38bdf8, 'ẑ'));
+  }
+
+  // Spherical unit vectors r̂, θ̂, φ̂
+  if (mod === 'spherical' || mod === 'compare' || (mod === 'unitvec' && state.inputMode === 'spherical')) {
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.rHat, len, 0xfacc15, 'r̂'));
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.thetaHat, len, 0xfb923c, 'θ̂'));
+    mainVisGroup.add(makeVectorArrow(origin, p.basis.phiHat, len, 0xa855f7, 'φ̂'));
+  }
+}
+
+/* ============================================================================
+   5. MODULE 6: SOLID ANGLE (2D ANGLE VS 3D STERADIAN CONE & ARBITRARY PATCH dA)
+   ============================================================================ */
+function renderSolidAngleModule() {
+  const R = state.sphereRadiusR;
+  const alphaRad = degToRad(state.coneHalfAngleDeg);
+
+  if (state.solidSubmode === 'cone') {
+    // 1. Left side (-5, 0, 0): 2D Ordinary Planar Angle θ = 2α on a circle
+    const c2dOrigin = new THREE.Vector3(-5.2, 0, 0);
+    const circlePts = [];
+    for (let i = 0; i <= 80; i++) {
+      const a = (2 * Math.PI * i) / 80;
+      circlePts.push(new THREE.Vector3(c2dOrigin.x + R * 0.7 * Math.cos(a), c2dOrigin.y + R * 0.7 * Math.sin(a), 0));
+    }
+    mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(circlePts), new THREE.LineBasicMaterial({ color: 0x475569 })));
+
+    // Highlighted 2D sector arc
+    const arcPts = [c2dOrigin.clone()];
+    for (let i = 0; i <= 40; i++) {
+      const a = -alphaRad + (2 * alphaRad * i) / 40;
+      arcPts.push(new THREE.Vector3(c2dOrigin.x + R * 0.7 * Math.cos(a), c2dOrigin.y + R * 0.7 * Math.sin(a), 0.02));
+    }
+    arcPts.push(c2dOrigin.clone());
+    mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcPts), new THREE.LineBasicMaterial({ color: 0x00f59b })));
+    const lbl2d = makeLabel(`2D Angle 2α = ${(2 * state.coneHalfAngleDeg).toFixed(0)}°`, '#00f59b', 0.9);
+    lbl2d.position.set(c2dOrigin.x, c2dOrigin.y, R * 0.85);
+    mainVisGroup.add(lbl2d);
+
+    // 2. Right side (+2.5, 0, 0): 3D Sphere + Solid Angle Spherical Cap Ω = 2π(1 - cos α)
+    const c3dOrigin = new THREE.Vector3(2.5, 0, 0);
+    const wireSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(R, 32, 24),
+      new THREE.MeshBasicMaterial({ color: 0x334155, wireframe: true, transparent: true, opacity: 0.25 })
+    );
+    wireSphere.position.copy(c3dOrigin);
+    mainVisGroup.add(wireSphere);
+
+    // Spherical Cap Patch cut out by cone of half-angle alpha around +Z
+    if (alphaRad > 0.01) {
+      const capGeo = new THREE.SphereGeometry(R * 1.005, 48, 32, 0, Math.PI * 2, 0, alphaRad);
+      // SphereGeometry polar angle starts from +Y by default; rotate X by 90 deg so cap is centered on +Z
+      capGeo.rotateX(Math.PI / 2);
+      const capMat = new THREE.MeshPhongMaterial({ color: 0x00d2ff, side: THREE.DoubleSide, transparent: true, opacity: 0.72, shininess: 70 });
+      const capMesh = new THREE.Mesh(capGeo, capMat);
+      capMesh.position.copy(c3dOrigin);
+      mainVisGroup.add(capMesh);
+
+      // Boundary rays of the cone from O to cap rim
+      const numRays = 12;
+      for (let k = 0; k < numRays; k++) {
+        const phi = (2 * Math.PI * k) / numRays;
+        const rimPt = new THREE.Vector3(
+          c3dOrigin.x + R * Math.sin(alphaRad) * Math.cos(phi),
+          c3dOrigin.y + R * Math.sin(alphaRad) * Math.sin(phi),
+          c3dOrigin.z + R * Math.cos(alphaRad)
+        );
+        const rayGeo = new THREE.BufferGeometry().setFromPoints([c3dOrigin, rimPt]);
+        mainVisGroup.add(new THREE.Line(rayGeo, new THREE.LineBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.65 })));
+      }
+    }
+    const omega = 2 * Math.PI * (1 - Math.cos(alphaRad));
+    const lbl3d = makeLabel(`3D Solid Angle Ω = ${omega.toFixed(2)} sr`, '#00d2ff', 0.95);
+    lbl3d.position.set(c3dOrigin.x, c3dOrigin.y, R + 0.8);
+    mainVisGroup.add(lbl3d);
+  } else {
+    // Arbitrary Tilted Surface Element dA at distance R with normal tilted by angle gamma
+    const dist = state.patchDistR;
+    const gammaRad = degToRad(state.patchTiltGammaDeg);
+    const side = Math.sqrt(state.patchAreaDA);
+
+    const patchCenter = new THREE.Vector3(dist, 0, 0);
+    const patchGeo = new THREE.PlaneGeometry(side, side);
+    patchGeo.rotateY(Math.PI / 2 + gammaRad);
+    const patchMesh = new THREE.Mesh(patchGeo, new THREE.MeshPhongMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+    patchMesh.position.copy(patchCenter);
+    mainVisGroup.add(patchMesh);
+
+    // Projected area perpendicular to line of sight
+    const projSide = side * Math.abs(Math.cos(gammaRad));
+    if (projSide > 0.02) {
+      const projGeo = new THREE.PlaneGeometry(side, projSide);
+      projGeo.rotateY(Math.PI / 2);
+      const projMesh = new THREE.Mesh(projGeo, new THREE.MeshBasicMaterial({ color: 0x00f59b, side: THREE.DoubleSide, transparent: true, opacity: 0.45 }));
+      projMesh.position.set(dist - 0.05, 0, 0);
+      mainVisGroup.add(projMesh);
+    }
+
+    // Radial line R and surface normal vector n̂
+    mainVisGroup.add(makeVectorArrow({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, dist, 0xfacc15, `R = ${dist.toFixed(1)}`));
+    const nDir = { x: Math.cos(gammaRad), y: 0, z: Math.sin(gammaRad) };
+    mainVisGroup.add(makeVectorArrow(patchCenter, nDir, 1.8, 0xff4d6d, 'n̂ (Normal)'));
+    mainVisGroup.add(makeVectorArrow(patchCenter, { x: -1, y: 0, z: 0 }, 1.8, 0x00f59b, 'Line of Sight'));
+  }
+}
+
+/* ============================================================================
+   6. MODULE 10: PHYSICS APPLICATIONS VISUALISER
+   ============================================================================ */
+function renderPhysicsModule(p) {
+  const app = state.physApp;
+  if (app === 'efield') {
+    // Point Charge +Q at origin and radial electric field vectors E = (kQ/r²) r̂
+    const qSphere = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), new THREE.MeshPhongMaterial({ color: 0xff4d6d, shininess: 90 }));
+    mainVisGroup.add(qSphere);
+    mainVisGroup.add(makeLabel('+Q', '#ff4d6d', 0.9));
+
+    // Radial field arrows on concentric shells
+    const dirs = [
+      [1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1],
+      [0.7,0.7,0], [-0.7,0.7,0], [0.7,-0.7,0], [-0.7,-0.7,0]
+    ];
+    dirs.forEach(d => {
+      const v = new THREE.Vector3(d[0], d[1], d[2]).normalize();
+      mainVisGroup.add(makeVectorArrow(v.clone().multiplyScalar(1.2), v, 1.5, 0xfacc15));
+    });
+
+    // Observation point P and E(P) along r̂
+    const pt = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00d2ff }));
+    pt.position.set(p.x, p.y, p.z);
+    mainVisGroup.add(pt);
+    const eMag = Math.min(3.0, 25 / Math.max(1, p.r * p.r));
+    mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.rHat, eMag, 0x00f59b, 'E = E(r) r̂'));
+  } else if (app === 'bfield') {
+    // Current-carrying wire along Z-axis and azimuthal B-field rings B = (μ₀I / 2πρ) φ̂
+    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 16, 16), new THREE.MeshPhongMaterial({ color: 0xfb923c }));
+    wire.rotation.x = Math.PI / 2;
+    mainVisGroup.add(wire);
+    mainVisGroup.add(makeVectorArrow({ x: 0, y: 0, z: -4 }, { x: 0, y: 0, z: 1 }, 8, 0xffffff, 'Current I (ẑ)'));
+
+    [2, 4, 6].forEach(rad => {
+      const ringPts = [];
+      for (let i = 0; i <= 80; i++) {
+        const a = (2 * Math.PI * i) / 80;
+        ringPts.push(new THREE.Vector3(rad * Math.cos(a), rad * Math.sin(a), p.z));
+      }
+      mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts), new THREE.LineBasicMaterial({ color: 0xa855f7 })));
+    });
+    mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.phiHat, 2.0, 0x00f59b, 'B = B(ρ) φ̂'));
+    mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.rhoHat, 1.3, 0xfacc15, 'ρ̂'));
+  } else {
+    // Circular / Helical / Planetary trajectory with live velocity & unit vectors
+    const pts = [];
+    for (let i = 0; i <= 120; i++) {
+      const t = (2 * Math.PI * i) / 60;
+      const rx = p.rho * Math.cos(t);
+      const ry = p.rho * Math.sin(t);
+      const rz = app === 'helical' ? (t - Math.PI) * 1.2 : 0;
+      pts.push(new THREE.Vector3(rx, ry, rz));
+    }
+    mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x38bdf8 })));
+    mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.rhoHat, 1.6, 0xfacc15, 'r̂ (Radial)'));
+    mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.phiHat, 2.0, 0x00f59b, 'v = ωρ φ̂ (Tangential)'));
+  }
+}
+
+/* ============================================================================
+   7. DYNAMIC MODULE CONTROL PANELS & RIGHT EXPLANATION PANELS
+   ============================================================================ */
+function selectModule(mod) {
+  state.activeModule = mod;
+  document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById(`mod-${mod}`);
+  if (btn) btn.classList.add('active');
+
+  if (mod === 'polar') {
+    state.dimMode = 2;
+    setInputCoordMode('cylindrical');
+    setCameraPreset('top');
+  } else if (mod === 'cylindrical') {
+    state.dimMode = 3;
+    setInputCoordMode('cylindrical');
+    setCameraPreset('iso');
+  } else if (mod === 'spherical') {
+    state.dimMode = 3;
+    setInputCoordMode('spherical');
+    setCameraPreset('iso');
+  } else if (mod === 'cartesian') {
+    setInputCoordMode('cartesian');
+  }
+
+  buildModuleControlsUI();
+  refreshScene();
+}
+
+function buildModuleControlsUI() {
+  const container = document.getElementById('sec-module-controls');
+  const mod = state.activeModule;
+
+  if (mod === 'dim') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 1: Select Dimension</span></div>
+      <div style="display:flex; gap:6px; margin-bottom:8px;">
+        <button class="btn-sm ${state.dimMode===1?'active-toggle':''}" style="flex:1;" onclick="setDimMode(1)">1D Line (x)</button>
+        <button class="btn-sm ${state.dimMode===2?'active-toggle':''}" style="flex:1;" onclick="setDimMode(2)">2D Plane (x,y)</button>
+        <button class="btn-sm ${state.dimMode===3?'active-toggle':''}" style="flex:1;" onclick="setDimMode(3)">3D Space (x,y,z)</button>
+      </div>
+      <div style="font-size:11.5px; color:var(--text-muted); line-height:1.45;">
+        ${state.dimMode === 1 ? '1D requires 1 signed coordinate (x). Notice the difference between signed position x and unsigned distance |x|.' :
+          state.dimMode === 2 ? '2D requires 2 independent coordinates (x, y) or polar (r, θ).' :
+          '3D requires 3 independent coordinates (x, y, z) to uniquely locate point P.'}
+      </div>
+    `;
+  } else if (mod === 'cartesian') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 2: Cartesian Planes &amp; Projections</span></div>
+      <div class="chk-grid" style="margin-bottom:8px;">
+        <label class="chk-lbl"><input type="checkbox" ${state.surfXOn?'checked':''} onchange="state.surfXOn=this.checked; refreshScene()"> Plane x = c</label>
+        <label class="chk-lbl"><input type="checkbox" ${state.surfYOn?'checked':''} onchange="state.surfYOn=this.checked; refreshScene()"> Plane y = c</label>
+        <label class="chk-lbl"><input type="checkbox" ${state.surfZOn?'checked':''} onchange="state.surfZOn=this.checked; refreshScene()"> Plane z = c</label>
+        <label class="chk-lbl"><input type="checkbox" ${state.projYZ?'checked':''} onchange="state.projYZ=this.checked; state.projXZ=this.checked; refreshScene()"> All 3 Plane Projections</label>
+      </div>
+      <div class="slider-row">
+        <div class="slider-head"><span>Plane Constant x = c</span><span class="val">${state.surfXVal.toFixed(1)}</span></div>
+        <input type="range" min="-6" max="6" step="0.5" value="${state.surfXVal}" oninput="state.surfXVal=parseFloat(this.value); state.surfXOn=true; buildModuleControlsUI(); refreshScene()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-head"><span>Plane Constant y = c</span><span class="val">${state.surfYVal.toFixed(1)}</span></div>
+        <input type="range" min="-6" max="6" step="0.5" value="${state.surfYVal}" oninput="state.surfYVal=parseFloat(this.value); state.surfYOn=true; buildModuleControlsUI(); refreshScene()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-head"><span>Plane Constant z = c</span><span class="val">${state.surfZVal.toFixed(1)}</span></div>
+        <input type="range" min="-6" max="6" step="0.5" value="${state.surfZVal}" oninput="state.surfZVal=parseFloat(this.value); state.surfZOn=true; buildModuleControlsUI(); refreshScene()">
+      </div>
+    `;
+  } else if (mod === 'polar') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 3: Polar 2D (r, θ) Controls</span></div>
+      <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">
+        Adjust radial distance <code>ρ (r)</code> and angle <code>φ (θ)</code> above. Notice how <strong>r̂</strong> and <strong>θ̂</strong> rotate with the point while remaining perpendicular!
+      </div>
+      <button class="btn-sm ${document.getElementById('chk-cart-compare').checked?'active-toggle':''}" style="width:100%;" onclick="const c=document.getElementById('chk-cart-compare'); c.checked=!c.checked; buildModuleControlsUI(); refreshScene();">
+        Compare with Cartesian Unit Vectors (î, ĵ)
+      </button>
+    `;
+  } else if (mod === 'cylindrical') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 4: Cylindrical Surfaces (ρ, φ, z)</span></div>
+      <div class="chk-grid" style="margin-bottom:8px;">
+        <label class="chk-lbl"><input type="checkbox" ${state.surfRhoOn?'checked':''} onchange="state.surfRhoOn=this.checked; refreshScene()"> Cylinder ρ = c</label>
+        <label class="chk-lbl"><input type="checkbox" ${state.surfPhiOn?'checked':''} onchange="state.surfPhiOn=this.checked; refreshScene()"> Half-Plane φ = c</label>
+        <label class="chk-lbl"><input type="checkbox" ${state.surfZOn?'checked':''} onchange="state.surfZOn=this.checked; refreshScene()"> Plane z = c</label>
+      </div>
+      <div class="slider-row">
+        <div class="slider-head"><span>Cylinder Radius ρ</span><span class="val">${state.surfRhoVal.toFixed(1)}</span></div>
+        <input type="range" min="0.5" max="8" step="0.25" value="${state.surfRhoVal}" oninput="state.surfRhoVal=parseFloat(this.value); state.surfRhoOn=true; buildModuleControlsUI(); refreshScene()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-head"><span>Half-Plane Azimuth φ (°)</span><span class="val">${state.surfPhiVal.toFixed(0)}°</span></div>
+        <input type="range" min="0" max="360" step="5" value="${state.surfPhiVal}" oninput="state.surfPhiVal=parseFloat(this.value); state.surfPhiOn=true; buildModuleControlsUI(); refreshScene()">
+      </div>
+    `;
+  } else if (mod === 'spherical') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 5: Spherical Surfaces (r, θ, φ)</span></div>
+      <div style="font-size:11px; color:#fde68a; background:rgba(255,183,3,0.12); padding:5px 7px; border-radius:4px; margin-bottom:8px;">
+        <strong>Physics Convention:</strong> θ is polar angle from +z (0 ≤ θ ≤ π); φ is azimuthal angle in xy-plane from +x (0 ≤ φ &lt; 2π).
+      </div>
+      <div class="chk-grid" style="margin-bottom:8px;">
+        <label class="chk-lbl"><input type="checkbox" ${state.surfSphROn?'checked':''} onchange="state.surfSphROn=this.checked; refreshScene()"> Sphere r = c</label>
+        <label class="chk-lbl"><input type="checkbox" ${state.surfSphThetaOn?'checked':''} onchange="state.surfSphThetaOn=this.checked; refreshScene()"> Cone θ = c</label>
+        <label class="chk-lbl"><input type="checkbox" ${state.surfPhiOn?'checked':''} onchange="state.surfPhiOn=this.checked; refreshScene()"> Half-Plane φ = c</label>
+      </div>
+      <div class="slider-row">
+        <div class="slider-head"><span>Sphere Radius r</span><span class="val">${state.surfSphRVal.toFixed(1)}</span></div>
+        <input type="range" min="0.5" max="9" step="0.25" value="${state.surfSphRVal}" oninput="state.surfSphRVal=parseFloat(this.value); state.surfSphROn=true; buildModuleControlsUI(); refreshScene()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-head"><span>Cone Polar Angle θ (°)</span><span class="val">${state.surfSphThetaVal.toFixed(0)}°</span></div>
+        <input type="range" min="5" max="175" step="5" value="${state.surfSphThetaVal}" oninput="state.surfSphThetaVal=parseFloat(this.value); state.surfSphThetaOn=true; buildModuleControlsUI(); refreshScene()">
+      </div>
+    `;
+  } else if (mod === 'solidangle') {
+    const omegaCone = 2 * Math.PI * (1 - Math.cos(degToRad(state.coneHalfAngleDeg)));
+    const dOmegaSigned = (Math.cos(degToRad(state.patchTiltGammaDeg)) * state.patchAreaDA) / (state.patchDistR * state.patchDistR);
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 6: Solid Angle Explorer (Ω)</span></div>
+      <div style="display:flex; gap:6px; margin-bottom:8px;">
+        <button class="btn-sm ${state.solidSubmode==='cone'?'active-toggle':''}" style="flex:1;" onclick="state.solidSubmode='cone'; buildModuleControlsUI(); refreshScene()">A/B: Cone &amp; Cap</button>
+        <button class="btn-sm ${state.solidSubmode==='patch'?'active-toggle':''}" style="flex:1;" onclick="state.solidSubmode='patch'; buildModuleControlsUI(); refreshScene()">C: Tilted Patch dA</button>
+      </div>
+      ${state.solidSubmode === 'cone' ? `
+        <div class="slider-row">
+          <div class="slider-head"><span>Cone Half-Angle α (Full = 2α)</span><span class="val">${state.coneHalfAngleDeg.toFixed(1)}°</span></div>
+          <input type="range" min="0" max="180" step="1" value="${state.coneHalfAngleDeg}" oninput="state.coneHalfAngleDeg=parseFloat(this.value); buildModuleControlsUI(); refreshScene()">
+        </div>
+        <div style="display:flex; gap:4px; margin-bottom:8px;">
+          <button class="btn-sm" style="flex:1" onclick="state.coneHalfAngleDeg=0; buildModuleControlsUI(); refreshScene()">α=0 (0 sr)</button>
+          <button class="btn-sm" style="flex:1" onclick="state.coneHalfAngleDeg=90; buildModuleControlsUI(); refreshScene()">α=90° (2π sr)</button>
+          <button class="btn-sm" style="flex:1" onclick="state.coneHalfAngleDeg=180; buildModuleControlsUI(); refreshScene()">α=180° (4π sr)</button>
+        </div>
+        <div class="formula-block">
+          Ω = A / R² = 2π(1 − cos α)<br>
+          Ω = ${omegaCone.toFixed(4)} sr (${(omegaCone / Math.PI).toFixed(2)}π sr)
+        </div>
+      ` : `
+        <div class="slider-row">
+          <div class="slider-head"><span>Tilt Angle γ (Normal vs Sight)</span><span class="val">${state.patchTiltGammaDeg.toFixed(0)}°</span></div>
+          <input type="range" min="0" max="180" step="2" value="${state.patchTiltGammaDeg}" oninput="state.patchTiltGammaDeg=parseFloat(this.value); buildModuleControlsUI(); refreshScene()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>Distance R from Origin</span><span class="val">${state.patchDistR.toFixed(1)}</span></div>
+          <input type="range" min="2" max="8" step="0.2" value="${state.patchDistR}" oninput="state.patchDistR=parseFloat(this.value); buildModuleControlsUI(); refreshScene()">
+        </div>
+        <div class="formula-block">
+          Signed dΩ = (cos γ dA) / R² = ${dOmegaSigned.toFixed(4)} sr<br>
+          Magnitude |dΩ| = |cos γ| dA / R² = ${Math.abs(dOmegaSigned).toFixed(4)} sr
+        </div>
+      `}
+    `;
+  } else if (mod === 'unitvec') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 7: Unit-Vector Orthogonality Lab</span></div>
+      <div class="num-box" style="margin-bottom:8px;">
+        <label>Inspect Dot Product &amp; Angle Between Basis Pair:</label>
+        <select onchange="state.orthoPair=this.value; refreshScene()">
+          <option value="1-2" ${state.orthoPair==='1-2'?'selected':''}>ê₁ · ê₂ (First &amp; Second Basis Vectors)</option>
+          <option value="2-3" ${state.orthoPair==='2-3'?'selected':''}>ê₂ · ê₃ (Second &amp; Third Basis Vectors)</option>
+          <option value="1-3" ${state.orthoPair==='1-3'?'selected':''}>ê₁ · ê₃ (First &amp; Third Basis Vectors)</option>
+          <option value="1-1" ${state.orthoPair==='1-1'?'selected':''}>ê₁ · ê₁ (Self Dot Product = 1)</option>
+        </select>
+      </div>
+      <div class="formula-block">
+        For an orthonormal basis (where well-defined):<br>
+        êᵢ · êⱼ = δᵢⱼ = ${state.orthoPair === '1-1' ? '1.0000 (Angle = 0°)' : '0.0000 (Angle = 90.00°)'}
+      </div>
+    `;
+  } else if (mod === 'builder') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 8: Custom Coordinate Element &amp; Equation Builder</span></div>
+      <div class="num-box" style="margin-bottom:6px;">
+        <label>Enter Equation (x=2, y=-1, z=3, ρ=3, r=4, x²+y²=9, x²+y²+z²=16, z=x²+y²):</label>
+        <div style="display:flex; gap:5px;">
+          <input type="text" id="custom-eq-in" class="full-input" style="flex:1;" value="x = 2" placeholder="e.g. x=2 or r=4">
+          <button class="btn-sm" style="background:var(--accent); color:#040811; font-weight:700;" onclick="addCustomEquationElement()">+ Add</button>
+        </div>
+      </div>
+      <div style="display:flex; gap:4px; margin-bottom:8px;">
+        <button class="btn-sm" style="flex:1;" onclick="addCustomPresetPoint()">+ Point P₂</button>
+        <button class="btn-sm" style="flex:1;" onclick="addCustomPresetVector()">+ Custom Vec</button>
+        <button class="btn-sm" style="flex:1;" onclick="saveCustomSceneLocal()">Save Scene</button>
+        <button class="btn-sm" style="flex:1;" onclick="loadCustomSceneLocal()">Load</button>
+      </div>
+      <div style="display:flex; gap:4px; margin-bottom:8px;">
+        <button class="btn-sm" style="flex:1;" onclick="exportSceneJSON()">Export JSON</button>
+        <button class="btn-sm" style="flex:1;" onclick="clearCustomElements()">Clear Custom</button>
+      </div>
+      <div id="custom-err-msg" class="err-banner"></div>
+      <div id="custom-el-list" style="max-height:110px; overflow-y:auto;">
+        ${state.customElements.map((el, i) => `
+          <div class="el-item">
+            <span>${el.label}</span>
+            <button class="btn-sm" style="padding:1px 6px;" onclick="removeCustomElement(${i})">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else if (mod === 'compare') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 9: Same Point, Different Coordinates</span></div>
+      <div style="font-size:11.5px; color:var(--text-muted); line-height:1.5;">
+        Move Point P using any slider above. Notice that the <strong>physical point in 3D space does not move</strong> when you switch coordinate representations—only the numbers and local basis vectors (î,ĵ,k̂ vs ρ̂,φ̂,ẑ vs r̂,θ̂,φ̂) change!
+      </div>
+    `;
+  } else if (mod === 'physics') {
+    container.innerHTML = `
+      <div class="sec-title"><span>Module 10: Physics Applications</span></div>
+      <select class="full-input" style="width:100%; margin-bottom:8px;" onchange="state.physApp=this.value; refreshScene()">
+        <option value="circular" ${state.physApp==='circular'?'selected':''}>App B: Circular Motion (Polar r̂, θ̂)</option>
+        <option value="helical" ${state.physApp==='helical'?'selected':''}>App C: Helical Motion Around Z-Axis (Cylindrical)</option>
+        <option value="efield" ${state.physApp==='efield'?'selected':''}>App E: Point Charge Electric Field E = E(r)r̂</option>
+        <option value="bfield" ${state.physApp==='bfield'?'selected':''}>App F: Straight Wire Magnetic Field B = B(ρ)φ̂</option>
+      </select>
+      <div style="font-size:11.5px; color:var(--text-muted);">
+        Move Point P to inspect how choosing the natural symmetry coordinate system reduces a 3-component vector field to a single component!
+      </div>
+    `;
+  } else if (mod === 'guided') {
+    const lesson = GUIDED_COURSE[state.lessonIdx];
+    container.innerHTML = `
+      <div class="sec-title">
+        <span>Lesson ${state.lessonIdx + 1} / ${GUIDED_COURSE.length}</span>
+        <div>
+          <button class="btn-sm" onclick="stepLesson(-1)">◀ Prev</button>
+          <button class="btn-sm" onclick="stepLesson(1)">Next ▶</button>
+        </div>
+      </div>
+      <div class="math-card" style="margin-bottom:0;">
+        <h4>${lesson.title}</h4>
+        <p style="margin-bottom:6px;">${lesson.text}</p>
+        <div class="formula-block">${lesson.math}</div>
+        <div style="font-size:11.5px; color:#a7f3d0; margin-top:4px;"><strong>Action:</strong> ${lesson.action}</div>
+      </div>
+    `;
+  } else if (mod === 'quiz') {
+    const q = QUIZ_BANK[state.quizIdx];
+    container.innerHTML = `
+      <div class="sec-title">
+        <span>Challenge ${state.quizIdx + 1} / ${QUIZ_BANK.length}</span>
+        <span style="color:var(--y-col)">Score: ${state.quizScore}/${QUIZ_BANK.length}</span>
+      </div>
+      <div class="math-card" style="margin-bottom:6px;">
+        <h4>${q.title}</h4>
+        <p style="margin-bottom:8px;">${q.prompt}</p>
+        ${q.options.map((opt, idx) => `
+          <button class="btn-sm" style="width:100%; text-align:left; margin-bottom:4px;" onclick="submitQuizAnswer(${idx})">${opt}</button>
+        `).join('')}
+        <div id="quiz-feedback" style="display:none; margin-top:6px; padding:6px; border-radius:4px; font-size:11.5px;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <button class="btn-sm" onclick="showQuizHint()">💡 Hint</button>
+        <button class="btn-sm" onclick="nextQuizQuestion()">Next Challenge ▶</button>
+      </div>
+    `;
+  }
+}
+
+/* ============================================================================
+   8. REAL-TIME MATHEMATICAL EXPLANATION & CONVERSION UPDATES
+   ============================================================================ */
+function updateSidePanels(p) {
+  document.getElementById('lbl-point-summary').textContent = `P(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`;
+
+  document.getElementById('status-bar').textContent =
+    `Cartesian: (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}) | ` +
+    `Cylindrical: (ρ=${p.rho.toFixed(2)}, φ=${formatAngle(p.phiPosRad)}, z=${p.z.toFixed(2)}) | ` +
+    `Spherical: (r=${p.r.toFixed(2)}, θ=${formatAngle(p.thetaRad)}, φ=${formatAngle(p.phiPosRad)})`;
+
+  // 1. Conversions Card
+  document.getElementById('card-conversions').innerHTML = `
+    <h4>Same Physical Point in All 3 Systems</h4>
+    <div class="formula-block">
+      <strong>Cartesian (x, y, z):</strong><br>
+      x = ${p.x.toFixed(3)}, y = ${p.y.toFixed(3)}, z = ${p.z.toFixed(3)}
+    </div>
+    <div class="formula-block" style="border-left-color:#facc15;">
+      <strong>Cylindrical (ρ, φ, z):</strong><br>
+      ρ = √(x²+y²) = ${p.rho.toFixed(3)}<br>
+      φ = atan2(y,x) = ${p.onZAxis ? 'Undefined (on z-axis)' : formatAngle(p.phiPosRad)}<br>
+      z = ${p.z.toFixed(3)}
+    </div>
+    <div class="formula-block" style="border-left-color:#fb923c;">
+      <strong>Spherical (r, θ, φ) [θ from +z]:</strong><br>
+      r = √(x²+y²+z²) = ${p.r.toFixed(3)}<br>
+      θ = arccos(z/r) = ${p.atOrigin ? 'Undefined (r=0)' : formatAngle(p.thetaRad)}<br>
+      φ = atan2(y,x) = ${p.onZAxis ? 'Undefined (ρ=0)' : formatAngle(p.phiPosRad)}
+    </div>
+  `;
+
+  // 2. Unit Vectors Table Card
+  const b = p.basis;
+  const fmtV = v => `(${v.x.toFixed(2)}î ${v.y>=0?'+':''}${v.y.toFixed(2)}ĵ ${v.z>=0?'+':''}${v.z.toFixed(2)}k̂)`;
+  document.getElementById('card-unit-vectors').innerHTML = `
+    <table class="vec-table">
+      <thead><tr><th>Basis</th><th>|ê|</th><th>Cartesian Components</th></tr></thead>
+      <tbody>
+        <tr><td style="color:#ff4d6d">î, ĵ, k̂</td><td>1.00</td><td>Fixed everywhere in space</td></tr>
+        <tr><td style="color:#facc15">ρ̂ (or r̂₂D)</td><td>1.00</td><td>${fmtV(b.rhoHat)}</td></tr>
+        <tr><td style="color:#a855f7">φ̂ (or θ̂₂D)</td><td>1.00</td><td>${fmtV(b.phiHat)}</td></tr>
+        <tr><td style="color:#facc15">r̂ (3D Sph)</td><td>1.00</td><td>${fmtV(b.rHat)}</td></tr>
+        <tr><td style="color:#fb923c">θ̂ (3D Sph)</td><td>1.00</td><td>${fmtV(b.thetaHat)}</td></tr>
+      </tbody>
+    </table>
+  `;
+
+  // 3. Legend & Contextual Explanation
+  const legItems = [
+    { col: '#ff4d6d', txt: 'X-Axis / î / x-proj' },
+    { col: '#00f59b', txt: 'Y-Axis / ĵ / y-proj' },
+    { col: '#38bdf8', txt: 'Z-Axis / k̂ / ẑ' },
+    { col: '#facc15', txt: 'Radial ρ̂ or r̂' },
+    { col: '#fb923c', txt: 'Polar Angle θ / θ̂' },
+    { col: '#a855f7', txt: 'Azimuthal φ / φ̂' }
+  ];
+  document.getElementById('legend-content').innerHTML = legItems.map(it =>
+    `<div class="leg-row"><span class="leg-dot" style="background:${it.col}"></span><span>${it.txt}</span></div>`
+  ).join('');
+
+  const expMap = {
+    dim: ['Dimensionality (1D → 2D → 3D)', 'In 1D, signed position x can be positive or negative while distance |x| ≥ 0. In 2D and 3D, each independent coordinate measures perpendicular displacement along mutually orthogonal axes.'],
+    cartesian: ['Cartesian Coordinate System (x, y, z)', 'Intersecting coordinate planes x = const (parallel to yz), y = const (parallel to xz), and z = const (parallel to xy) meet at a single point P. Unit vectors î, ĵ, k̂ never change direction when P moves.'],
+    polar: ['2D Polar Coordinate System (r, θ)', 'x = r cos θ, y = r sin θ. Constant r gives a circle; constant θ gives a radial ray. Unlike î and ĵ, the polar unit vectors r̂ and θ̂ rotate as the angle θ changes!'],
+    cylindrical: ['Cylindrical Coordinates (ρ, φ, z)', 'Combines 2D polar coordinates (ρ, φ) in the xy-plane with Cartesian height z. Surfaces of constant ρ are coaxial cylinders around the z-axis.'],
+    spherical: ['Spherical Coordinates (r, θ, φ)', 'Uses radial distance r from origin, polar angle θ downward from +z (0 ≤ θ ≤ π), and azimuth φ from +x. Surfaces are spheres (r=c), cones (θ=c), and vertical half-planes (φ=c).'],
+    solidangle: ['Solid Angle Ω (Steradians)', 'A 2D angle θ = s/R measures planar spread in radians (full circle = 2π rad). A 3D solid angle Ω = A/R² measures 3D directional spread in steradians (hemisphere = 2π sr, full sphere = 4π sr).'],
+    unitvec: ['Orthonormal Unit Vectors Lab', 'Curvilinear unit vectors (ρ̂, φ̂, r̂, θ̂) depend on position and rotate as P moves, yet remain mutually perpendicular (êᵢ · êⱼ = 0 for i ≠ j) and unit length (|êᵢ| = 1).'],
+    builder: ['Custom Coordinate & Surface Builder', 'Add custom planes, cylinders, spheres, points, or vectors using equations and save or export your configuration as JSON.'],
+    compare: ['Same Point, Different Coordinates', 'Changing coordinate systems is like changing the language used to describe where P is located—the physical point itself stays fixed in space.'],
+    physics: ['Symmetry in Physics Applications', 'Choosing spherical coordinates for a point charge (E = E(r)r̂) or cylindrical coordinates for a current wire (B = B(ρ)φ̂) aligns the math directly with physical symmetry.'],
+    guided: ['Guided Step-by-Step Course', 'Follow the 13 interactive lessons in the left panel to master coordinate systems from 1D number lines to 3D vector calculus.'],
+    quiz: ['Interactive Challenge & Quiz Mode', 'Test your intuition on coordinate conversions, coordinate surfaces, unit vector rotation, and solid angles.']
+  };
+  const info = expMap[state.activeModule] || expMap.cartesian;
+  document.getElementById('card-explanation').innerHTML = `<h4>${info[0]}</h4><p>${info[1]}</p>`;
+}
+
+/* ============================================================================
+   9. INPUT & SLIDER SYNCHRONIZATION (TESTS 1, 2, 3, 4, 11, 12)
+   ============================================================================ */
+function setInputCoordMode(mode) {
+  state.inputMode = mode;
+  document.getElementById('in-mode-cart').classList.toggle('active-toggle', mode === 'cartesian');
+  document.getElementById('in-mode-cyl').classList.toggle('active-toggle', mode === 'cylindrical');
+  document.getElementById('in-mode-sph').classList.toggle('active-toggle', mode === 'spherical');
+
+  document.getElementById('sliders-cartesian').style.display = mode === 'cartesian' ? 'block' : 'none';
+  document.getElementById('sliders-cylindrical').style.display = mode === 'cylindrical' ? 'block' : 'none';
+  document.getElementById('sliders-spherical').style.display = mode === 'spherical' ? 'block' : 'none';
+
+  const u = state.useDegrees ? '°' : ' rad';
+  if (mode === 'cartesian') {
+    document.getElementById('lbl-in-1').textContent = 'x';
+    document.getElementById('lbl-in-2').textContent = 'y';
+    document.getElementById('lbl-in-3').textContent = 'z';
+  } else if (mode === 'cylindrical') {
+    document.getElementById('lbl-in-1').textContent = 'ρ (or r)';
+    document.getElementById('lbl-in-2').textContent = `φ (${u})`;
+    document.getElementById('lbl-in-3').textContent = 'z';
+  } else {
+    document.getElementById('lbl-in-1').textContent = 'r';
+    document.getElementById('lbl-in-2').textContent = `θ (${u})`;
+    document.getElementById('lbl-in-3').textContent = `φ (${u})`;
+  }
+  syncInputsFromState();
+  refreshScene();
+}
+
+function syncInputsFromState() {
+  const p = getPointData(state.x, state.y, state.z);
+  document.getElementById('rng-x').value = p.x;
+  document.getElementById('rng-y').value = p.y;
+  document.getElementById('rng-z').value = p.z;
+  document.getElementById('val-x').textContent = p.x.toFixed(2);
+  document.getElementById('val-y').textContent = p.y.toFixed(2);
+  document.getElementById('val-z').textContent = p.z.toFixed(2);
+
+  const phiDeg = radToDeg(p.phiPosRad);
+  const thetaDeg = radToDeg(p.thetaRad);
+
+  document.getElementById('rng-rho').value = p.rho;
+  document.getElementById('rng-phi').value = phiDeg;
+  document.getElementById('rng-cyl-z').value = p.z;
+  document.getElementById('val-rho').textContent = p.rho.toFixed(2);
+  document.getElementById('val-phi').textContent = formatAngle(p.phiPosRad);
+  document.getElementById('val-cyl-z').textContent = p.z.toFixed(2);
+
+  document.getElementById('rng-sph-r').value = p.r;
+  document.getElementById('rng-sph-theta').value = thetaDeg;
+  document.getElementById('rng-sph-phi').value = phiDeg;
+  document.getElementById('val-sph-r').textContent = p.r.toFixed(2);
+  document.getElementById('val-sph-theta').textContent = formatAngle(p.thetaRad);
+  document.getElementById('val-sph-phi').textContent = formatAngle(p.phiPosRad);
+
+  if (state.inputMode === 'cartesian') {
+    document.getElementById('in-coord-1').value = Number(p.x.toFixed(4));
+    document.getElementById('in-coord-2').value = Number(p.y.toFixed(4));
+    document.getElementById('in-coord-3').value = Number(p.z.toFixed(4));
+  } else if (state.inputMode === 'cylindrical') {
+    document.getElementById('in-coord-1').value = Number(p.rho.toFixed(4));
+    document.getElementById('in-coord-2').value = Number((state.useDegrees ? phiDeg : p.phiPosRad).toFixed(4));
+    document.getElementById('in-coord-3').value = Number(p.z.toFixed(4));
+  } else {
+    document.getElementById('in-coord-1').value = Number(p.r.toFixed(4));
+    document.getElementById('in-coord-2').value = Number((state.useDegrees ? thetaDeg : p.thetaRad).toFixed(4));
+    document.getElementById('in-coord-3').value = Number((state.useDegrees ? phiDeg : p.phiPosRad).toFixed(4));
+  }
+}
+
+function onCartesianSlider() {
+  state.x = parseFloat(document.getElementById('rng-x').value);
+  state.y = parseFloat(document.getElementById('rng-y').value);
+  state.z = parseFloat(document.getElementById('rng-z').value);
+  syncInputsFromState();
+  refreshScene();
+}
+
+function onCylindricalSlider() {
+  const rho = parseFloat(document.getElementById('rng-rho').value);
+  const phiRad = degToRad(parseFloat(document.getElementById('rng-phi').value));
+  const z = parseFloat(document.getElementById('rng-cyl-z').value);
+  state.x = rho * Math.cos(phiRad);
+  state.y = rho * Math.sin(phiRad);
+  state.z = z;
+  syncInputsFromState();
+  refreshScene();
+}
+
+function onSphericalSlider() {
+  const r = parseFloat(document.getElementById('rng-sph-r').value);
+  const thetaRad = degToRad(parseFloat(document.getElementById('rng-sph-theta').value));
+  const phiRad = degToRad(parseFloat(document.getElementById('rng-sph-phi').value));
+  state.x = r * Math.sin(thetaRad) * Math.cos(phiRad);
+  state.y = r * Math.sin(thetaRad) * Math.sin(phiRad);
+  state.z = r * Math.cos(thetaRad);
+  syncInputsFromState();
+  refreshScene();
+}
+
+function onManualCoordSubmit() {
+  const errEl = document.getElementById('input-err-banner');
+  errEl.style.display = 'none';
+  try {
+    const v1 = evalMathInput(document.getElementById('in-coord-1').value, false);
+    const v2 = evalMathInput(document.getElementById('in-coord-2').value, state.inputMode !== 'cartesian');
+    const v3 = evalMathInput(document.getElementById('in-coord-3').value, state.inputMode === 'spherical');
+
+    if (state.inputMode === 'cartesian') {
+      state.x = v1; state.y = v2; state.z = v3;
+    } else if (state.inputMode === 'cylindrical') {
+      if (v1 < 0) throw new Error('Radial distance ρ must be non-negative (ρ ≥ 0).');
+      const phiRad = state.useDegrees ? degToRad(v2) : v2;
+      state.x = v1 * Math.cos(phiRad);
+      state.y = v1 * Math.sin(phiRad);
+      state.z = v3;
+    } else {
+      if (v1 < 0) throw new Error('Spherical radius r must be non-negative (r ≥ 0).');
+      const thetaRad = state.useDegrees ? degToRad(v2) : v2;
+      if (thetaRad < -1e-6 || thetaRad > Math.PI + 1e-6) {
+        throw new Error('Polar angle θ must lie in [0°, 180°] (or [0, π] rad).');
+      }
+      const phiRad = state.useDegrees ? degToRad(v3) : v3;
+      state.x = v1 * Math.sin(thetaRad) * Math.cos(phiRad);
+      state.y = v1 * Math.sin(thetaRad) * Math.sin(phiRad);
+      state.z = v1 * Math.cos(thetaRad);
+    }
+    syncInputsFromState();
+    refreshScene();
+  } catch (err) {
+    errEl.style.display = 'block';
+    errEl.textContent = err.message;
+  }
+}
+
+/* ============================================================================
+   10. MODULE 8: CUSTOM BUILDER & SAVE / LOAD / EXPORT JSON (TEST 10 & 12)
+   ============================================================================ */
+function rebuildCustomGroup() {
+  clearGroup(customGroup);
+  const L = 8;
+  state.customElements.forEach(el => {
+    if (el.kind === 'planeX') {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2*L, 2*L), new THREE.MeshBasicMaterial({ color: 0xff4d6d, side: THREE.DoubleSide, transparent: true, opacity: 0.22, depthWrite: false }));
+      m.rotation.y = Math.PI / 2; m.position.set(el.val, 0, 0);
+      customGroup.add(m);
+    } else if (el.kind === 'planeY') {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2*L, 2*L), new THREE.MeshBasicMaterial({ color: 0x00f59b, side: THREE.DoubleSide, transparent: true, opacity: 0.22, depthWrite: false }));
+      m.rotation.x = Math.PI / 2; m.position.set(0, el.val, 0);
+      customGroup.add(m);
+    } else if (el.kind === 'planeZ') {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2*L, 2*L), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.22, depthWrite: false }));
+      m.position.set(0, 0, el.val);
+      customGroup.add(m);
+    } else if (el.kind === 'cylinder') {
+      const g = new THREE.CylinderGeometry(el.val, el.val, 2*L, 48, 1, true);
+      g.rotateX(Math.PI / 2);
+      customGroup.add(new THREE.Mesh(g, new THREE.MeshPhongMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.24, depthWrite: false })));
+    } else if (el.kind === 'sphere') {
+      const g = new THREE.SphereGeometry(el.val, 36, 28);
+      customGroup.add(new THREE.Mesh(g, new THREE.MeshPhongMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.24, depthWrite: false })));
+    } else if (el.kind === 'paraboloid') {
+      const pts = [], inds = [];
+      const N = 40;
+      for (let i = 0; i <= N; i++) {
+        const x = -4 + (8 * i) / N;
+        for (let j = 0; j <= N; j++) {
+          const y = -4 + (8 * j) / N;
+          pts.push(x, y, 0.25 * (x*x + y*y));
+        }
+      }
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          const a = i*(N+1)+j, b = (i+1)*(N+1)+j, c = (i+1)*(N+1)+(j+1), d = i*(N+1)+(j+1);
+          inds.push(a, b, d, b, c, d);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setIndex(inds);
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      geo.computeVertexNormals();
+      customGroup.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: 0x00d2ff, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })));
+    } else if (el.kind === 'point') {
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+      s.position.set(el.x, el.y, el.z);
+      customGroup.add(s);
+      customGroup.add(makeLabel(el.label, '#facc15', 0.8));
+    } else if (el.kind === 'vector') {
+      customGroup.add(makeVectorArrow({ x: 0, y: 0, z: 0 }, { x: el.x, y: el.y, z: el.z }, Math.hypot(el.x, el.y, el.z), 0x00f59b, el.label));
+    }
+  });
+}
+
+function addCustomEquationElement() {
+  const raw = document.getElementById('custom-eq-in').value.trim().replace(/\s+/g, '');
+  const errBox = document.getElementById('custom-err-msg');
+  errBox.style.display = 'none';
+
+  let m;
+  if ((m = raw.match(/^x=([+-]?[0-9.]+)$/i))) {
+    state.customElements.push({ kind: 'planeX', val: parseFloat(m[1]), label: `Plane x = ${m[1]}` });
+  } else if ((m = raw.match(/^y=([+-]?[0-9.]+)$/i))) {
+    state.customElements.push({ kind: 'planeY', val: parseFloat(m[1]), label: `Plane y = ${m[1]}` });
+  } else if ((m = raw.match(/^z=([+-]?[0-9.]+)$/i))) {
+    state.customElements.push({ kind: 'planeZ', val: parseFloat(m[1]), label: `Plane z = ${m[1]}` });
+  } else if ((m = raw.match(/^(?:ρ|rho)=([0-9.]+)$/i))) {
+    state.customElements.push({ kind: 'cylinder', val: parseFloat(m[1]), label: `Cylinder ρ = ${m[1]}` });
+  } else if ((m = raw.match(/^r=([0-9.]+)$/i))) {
+    state.customElements.push({ kind: 'sphere', val: parseFloat(m[1]), label: `Sphere r = ${m[1]}` });
+  } else if ((m = raw.match(/^x(?:\^2|²)\+y(?:\^2|²)=([0-9.]+)$/i))) {
+    const rad = Math.sqrt(parseFloat(m[1]));
+    state.customElements.push({ kind: 'cylinder', val: rad, label: `Cylinder x²+y²=${m[1]} (ρ=${rad.toFixed(2)})` });
+  } else if ((m = raw.match(/^x(?:\^2|²)\+y(?:\^2|²)\+z(?:\^2|²)=([0-9.]+)$/i))) {
+    const rad = Math.sqrt(parseFloat(m[1]));
+    state.customElements.push({ kind: 'sphere', val: rad, label: `Sphere x²+y²+z²=${m[1]} (r=${rad.toFixed(2)})` });
+  } else if (/^z=x(?:\^2|²)\+y(?:\^2|²)$/i.test(raw)) {
+    state.customElements.push({ kind: 'paraboloid', label: 'Paraboloid z = x² + y²' });
+  } else {
+    errBox.style.display = 'block';
+    errBox.textContent = `Unsupported custom equation "${raw}". Supported forms: x=c, y=c, z=c, ρ=c, r=c, x²+y²=R², x²+y²+z²=R², z=x²+y².`;
+    return;
+  }
+  rebuildCustomGroup();
+  buildModuleControlsUI();
+}
+
+function addCustomPresetPoint() {
+  state.customElements.push({ kind: 'point', x: state.x, y: state.y, z: state.z, label: `P_custom(${state.x.toFixed(1)},${state.y.toFixed(1)},${state.z.toFixed(1)})` });
+  rebuildCustomGroup();
+  buildModuleControlsUI();
+}
+
+function addCustomPresetVector() {
+  state.customElements.push({ kind: 'vector', x: state.x, y: state.y, z: state.z, label: `V_custom(${state.x.toFixed(1)},${state.y.toFixed(1)},${state.z.toFixed(1)})` });
+  rebuildCustomGroup();
+  buildModuleControlsUI();
+}
+
+function removeCustomElement(idx) {
+  state.customElements.splice(idx, 1);
+  rebuildCustomGroup();
+  buildModuleControlsUI();
+}
+
+function clearCustomElements() {
+  state.customElements = [];
+  rebuildCustomGroup();
+  buildModuleControlsUI();
+}
+
+function saveCustomSceneLocal() {
+  const payload = { x: state.x, y: state.y, z: state.z, customElements: state.customElements };
+  localStorage.setItem('coord_lab_saved_scene', JSON.stringify(payload));
+  alert('Scene saved to browser localStorage!');
+}
+
+function loadCustomSceneLocal() {
+  const raw = localStorage.getItem('coord_lab_saved_scene');
+  if (!raw) { alert('No saved scene found in browser storage.'); return; }
+  const data = JSON.parse(raw);
+  state.x = data.x; state.y = data.y; state.z = data.z;
+  state.customElements = data.customElements || [];
+  syncInputsFromState();
+  rebuildCustomGroup();
+  buildModuleControlsUI();
+  refreshScene();
+}
+
+function exportSceneJSON() {
+  const payload = JSON.stringify({ x: state.x, y: state.y, z: state.z, customElements: state.customElements }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'coordinate-scene.json';
+  a.click();
+}
+
+/* ============================================================================
+   11. MODULE 11 & 12: 13 GUIDED LESSONS & 7 INTERACTIVE CHALLENGES
+   ============================================================================ */
+const GUIDED_COURSE = [
+  { title: '1. What is a Coordinate System?', text: 'A coordinate system is a rule for assigning a unique set of numbers to every point in space relative to a chosen origin O and reference directions.', math: 'Point P ↔ (q₁, q₂, q₃)', action: 'Drag the x, y, z sliders to move Point P in 3D space.' },
+  { title: '2. Understanding 1D, 2D, and 3D', text: '1D needs 1 number (line), 2D needs 2 numbers (plane), and 3D needs 3 numbers (space).', math: 'r₁D = |x|,  r₂D = √(x²+y²),  r₃D = √(x²+y²+z²)', action: 'Switch to Module 1 to test 1D, 2D, and 3D modes.' },
+  { title: '3. Cartesian Coordinates (x, y, z)', text: 'Measures perpendicular signed distances along three mutually perpendicular axes.', math: 'r = x î + y ĵ + z k̂', action: 'Enter P(3, 4, 5) and inspect its plane projections.' },
+  { title: '4. Cartesian Coordinate Lines & Surfaces', text: 'Fixing one Cartesian coordinate (e.g., z = 2) gives a flat plane; fixing two coordinates gives a straight line.', math: 'x = c (yz-plane), y = c (xz-plane), z = c (xy-plane)', action: 'Toggle planes in Module 2 to see their intersection at P.' },
+  { title: '5. 2D Polar Coordinates (r, θ)', text: 'Locates a point in the xy-plane by its distance r from the origin and angle θ from +x.', math: 'x = r cos θ,   y = r sin θ', action: 'Set r = 5, θ = 53.13° and verify x = 3, y = 4.' },
+  { title: '6. Cartesian vs. Polar Unit Vectors', text: 'Cartesian î and ĵ always point in the same direction. Polar r̂ and θ̂ rotate as the point moves around the origin!', math: 'r̂ = cos θ î + sin θ ĵ,   θ̂ = -sin θ î + cos θ ĵ', action: 'Vary φ (θ) and watch r̂ and θ̂ rotate while staying 90° apart.' },
+  { title: '7. Cylindrical Coordinates (ρ, φ, z)', text: 'Adds vertical height z to 2D polar coordinates (ρ, φ). Ideal for pipes, wires, and axial symmetry.', math: 'x = ρ cos φ,   y = ρ sin φ,   z = z', action: 'Open Module 4 and vary ρ, φ, and z.' },
+  { title: '8. Cylindrical Coordinate Surfaces', text: 'ρ = constant is a cylinder around the z-axis; φ = constant is a vertical half-plane; z = constant is a horizontal plane.', math: 'ρ = √(x² + y²) = constant', action: 'Enable Cylinder and Half-Plane surfaces in Module 4.' },
+  { title: '9. Spherical Coordinates (r, θ, φ)', text: 'Uses radial distance r from origin, polar angle θ downward from +z (0 ≤ θ ≤ π), and azimuth φ from +x.', math: 'x = r sin θ cos φ,  y = r sin θ sin φ,  z = r cos θ', action: 'Open Module 5 and move θ from 0° (+z pole) to 180° (-z pole).' },
+  { title: '10. Spherical Unit Vectors (r̂, θ̂, φ̂)', text: 'r̂ points radially outward, θ̂ points southward along a meridian (increasing θ), and φ̂ points eastward along a latitude circle.', math: 'r̂ · θ̂ = 0,   θ̂ · φ̂ = 0,   r̂ · φ̂ = 0', action: 'Move P in Spherical mode and observe the 3 orthogonal arrows.' },
+  { title: '11. Comparing All Coordinate Systems', text: 'A physical point does not move when we change from Cartesian to Cylindrical or Spherical coordinates.', math: 'P(3,4,5) = Cyl(5, 53.13°, 5) = Sph(7.07, 45°, 53.13°)', action: 'Check the Live Conversions card on the right.' },
+  { title: '12. Understanding Solid Angle (Ω)', text: 'Solid angle measures the 3D spread of directions subtended by a surface at point O, measured in steradians (sr).', math: 'Ω = A / R² = 2π(1 − cos α)  [Full sphere = 4π sr]', action: 'Open Module 6 and set cone half-angle α = 90° (Hemisphere = 2π sr).' },
+  { title: '13. Physics Applications (Fields & Flux)', text: 'Point charges have spherical symmetry (E along r̂); straight current wires have cylindrical symmetry (B along φ̂).', math: 'E = (kQ/r²) r̂,    B = (μ₀I / 2πρ) φ̂', action: 'Explore Module 10 to see radial E-fields and circular B-fields.' }
+];
+
+const QUIZ_BANK = [
+  {
+    title: 'Challenge 1: Cartesian → Cylindrical Conversion',
+    prompt: 'A point has Cartesian coordinates P(3, 4, 2). What are its cylindrical coordinates (ρ, φ, z)?',
+    options: ['(5, 53.13°, 2)', '(7, 36.87°, 2)', '(5, 45.00°, 2)', '(25, 53.13°, 2)'],
+    correct: 0,
+    hint: 'Use ρ = √(3² + 4²) = 5 and φ = atan2(4, 3) ≈ 53.13°.',
+    explain: 'Correct! √(3²+4²) = 5, atan2(4,3) ≈ 53.13°, and z remains 2.'
+  },
+  {
+    title: 'Challenge 2: Cylindrical → Cartesian Prediction',
+    prompt: 'A point has cylindrical coordinates (ρ = 4, φ = 90°, z = 3). What are its Cartesian (x, y, z) coordinates?',
+    options: ['(4, 0, 3)', '(0, 4, 3)', '(2.83, 2.83, 3)', '(0, 3, 4)'],
+    correct: 1,
+    hint: 'At φ = 90°, the point lies directly above the positive y-axis (cos 90° = 0, sin 90° = 1).',
+    explain: 'Correct! x = 4 cos 90° = 0, y = 4 sin 90° = 4, and z = 3.'
+  },
+  {
+    title: 'Challenge 3: Spherical Polar Angle θ = 90°',
+    prompt: 'In our physics spherical convention (θ measured from +z), where do all points with θ = 90° (π/2 rad) lie?',
+    options: ['Along the positive z-axis', 'In the horizontal xy-plane (z = 0)', 'In the vertical yz-plane', 'At the origin only'],
+    correct: 1,
+    hint: 'Recall z = r cos θ. What is cos(90°)?',
+    explain: 'Correct! Since z = r cos(90°) = 0, the cone θ = 90° flattens into the entire xy-plane.'
+  },
+  {
+    title: 'Challenge 4: Cartesian Coordinate Surface',
+    prompt: 'What 3D geometric surface is represented by the equation x = constant in 3D space?',
+    options: ['A plane parallel to the yz-plane', 'A plane parallel to the xz-plane', 'A plane parallel to the xy-plane', 'A line parallel to the x-axis'],
+    correct: 0,
+    hint: 'If x is fixed while y and z vary freely, which coordinate plane has x = 0?',
+    explain: 'Correct! Allowing y and z to take any values while holding x constant forms a plane parallel to the yz-plane.'
+  },
+  {
+    title: 'Challenge 5: Cylindrical Unit Vector Rotation',
+    prompt: 'As a point moves in a horizontal circle around the z-axis (φ changes), how do the cylindrical unit vectors (ρ̂, φ̂, ẑ) behave?',
+    options: ['All three remain fixed in direction', 'ρ̂ and φ̂ rotate in the xy-plane while ẑ stays fixed vertically', 'Only ẑ rotates', 'All three change direction'],
+    correct: 1,
+    hint: 'Check the formulas: ρ̂ = cos φ î + sin φ ĵ, φ̂ = -sin φ î + cos φ ĵ, and ẑ = k̂.',
+    explain: 'Correct! ρ̂ and φ̂ rotate with azimuth φ, whereas ẑ = k̂ always points straight up.'
+  },
+  {
+    title: 'Challenge 6: Solid Angle of a Hemisphere',
+    prompt: 'When the half-angle α of a cone is 90° (full opening angle 180°), what solid angle Ω does it subtend?',
+    options: ['π sr', '2π sr (≈ 6.283 sr)', '4π sr (≈ 12.566 sr)', '1 sr'],
+    correct: 1,
+    hint: 'Use Ω = 2π(1 − cos α) with cos(90°) = 0.',
+    explain: 'Correct! A hemisphere subtends Ω = 2π(1 − cos 90°) = 2π steradians.'
+  },
+  {
+    title: 'Challenge 7: Position-Independent Unit Vectors',
+    prompt: 'Which coordinate system has basis unit vectors that NEVER change direction when the observation point P moves?',
+    options: ['Cartesian (î, ĵ, k̂)', 'Polar (r̂, θ̂)', 'Cylindrical (ρ̂, φ̂, ẑ)', 'Spherical (r̂, θ̂, φ̂)'],
+    correct: 0,
+    hint: 'Which basis vectors do not contain θ or φ in their definitions?',
+    explain: 'Correct! Only the Cartesian unit vectors (î, ĵ, k̂) are constant in direction everywhere in space.'
+  }
+];
+
+function stepLesson(dir) {
+  state.lessonIdx = (state.lessonIdx + dir + GUIDED_COURSE.length) % GUIDED_COURSE.length;
+  buildModuleControlsUI();
+}
+
+function submitQuizAnswer(choiceIdx) {
+  const q = QUIZ_BANK[state.quizIdx];
+  const fb = document.getElementById('quiz-feedback');
+  fb.style.display = 'block';
+  if (choiceIdx === q.correct) {
+    if (!state.quizAttempted) state.quizScore++;
+    state.quizAttempted = true;
+    fb.style.background = 'rgba(0, 245, 155, 0.15)';
+    fb.style.border = '1px solid #00f59b';
+    fb.style.color = '#a7f3d0';
+    fb.textContent = '✓ ' + q.explain;
+  } else {
+    fb.style.background = 'rgba(255, 77, 109, 0.15)';
+    fb.style.border = '1px solid #ff4d6d';
+    fb.style.color = '#fda4af';
+    fb.textContent = '✗ Not quite. Try again or click Hint!';
+  }
+}
+
+function showQuizHint() {
+  const q = QUIZ_BANK[state.quizIdx];
+  const fb = document.getElementById('quiz-feedback');
+  fb.style.display = 'block';
+  fb.style.background = 'rgba(255, 183, 3, 0.14)';
+  fb.style.border = '1px solid #ffb703';
+  fb.style.color = '#fde68a';
+  fb.textContent = '💡 Hint: ' + q.hint;
+}
+
+function nextQuizQuestion() {
+  state.quizAttempted = false;
+  state.quizIdx = (state.quizIdx + 1) % QUIZ_BANK.length;
+  buildModuleControlsUI();
+}
+
+/* ============================================================================
+   12. TOOLBAR & CAMERA / ANIMATION HANDLERS
+   ============================================================================ */
+function setDimMode(d) {
+  state.dimMode = d;
+  document.getElementById('row-slider-y').style.display = d >= 2 ? 'flex' : 'none';
+  document.getElementById('row-slider-z').style.display = d === 3 ? 'flex' : 'none';
+  if (d <= 2) setCameraPreset('top');
+  else setCameraPreset('iso');
+  buildModuleControlsUI();
+  refreshScene();
+}
+
+function toggleAngleUnit() {
+  state.useDegrees = !state.useDegrees;
+  const btn = document.getElementById('btn-angle-unit');
+  btn.textContent = state.useDegrees ? 'Angles: DEG (°)' : 'Angles: RAD';
+  btn.classList.toggle('active-toggle', !state.useDegrees);
+  setInputCoordMode(state.inputMode);
+}
+
+function toggleCameraProjection() {
+  state.orthoCamera = !state.orthoCamera;
+  const pos = camera.position.clone();
+  const target = controls.target.clone();
+  camera = state.orthoCamera ? orthoCam : perspCam;
+  camera.position.copy(pos);
+  controls.object = camera;
+  controls.target.copy(target);
+  controls.update();
+  document.getElementById('btn-cam-proj').textContent = state.orthoCamera ? 'Camera: Orthographic' : 'Camera: Perspective';
+}
+
+function setCameraPreset(preset) {
+  controls.target.set(0, 0, 0);
+  if (preset === 'top') camera.position.set(0, -0.01, 18);
+  else if (preset === 'front') camera.position.set(0, -18, 0);
+  else if (preset === 'side') camera.position.set(18, 0, 0);
+  else camera.position.set(14, -14, 10);
+  controls.update();
+}
+
+function resetPointToDefault() {
+  state.x = 3; state.y = 4; state.z = 5;
+  syncInputsFromState();
+  refreshScene();
+}
+
+function toggleAnimation() {
+  state.animating = !state.animating;
+  const btn = document.getElementById('btn-anim-toggle');
+  btn.textContent = state.animating ? '⏸ Pause Animation' : '▶ Animate Line';
+  btn.classList.toggle('active-toggle', state.animating);
+}
+
+let prevTime = performance.now();
+function animate(now = performance.now()) {
+  requestAnimationFrame(animate);
+  const dt = (now - prevTime) / 1000;
+  prevTime = now;
+
+  if (state.animating) {
+    state.animTime += dt;
+    if (state.activeModule === 'solidangle') {
+      state.coneHalfAngleDeg = 90 + 85 * Math.sin(state.animTime * 1.2);
+      buildModuleControlsUI();
+      refreshScene();
+    } else {
+      // Rotate azimuthal angle phi smoothly along the circular coordinate line
+      const p = getPointData(state.x, state.y, state.z);
+      const newPhi = p.phiRad + dt * 1.1;
+      const rho = Math.max(0.5, p.rho);
+      state.x = rho * Math.cos(newPhi);
+      state.y = rho * Math.sin(newPhi);
+      syncInputsFromState();
+      refreshScene();
+    }
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initThreeJS();
+  buildModuleControlsUI();
+  syncInputsFromState();
+  refreshScene();
+  animate();
+});
+</script>
+</body>
+</html>
