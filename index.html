@@ -9,7 +9,7 @@
 <style>
   :root {
     --bg-dark: #060911;
-    --panel-bg: #0f1523;
+    --panel-bg: rgba(15, 21, 35, 0.95);
     --panel-border: #222f49;
     --text-main: #f1f5f9;
     --text-muted: #94a3b8;
@@ -36,19 +36,21 @@
 
   /* Header & Module Navigation */
   header {
-    background: var(--panel-bg);
+    background: #0f1523;
     border-bottom: 1px solid var(--panel-border);
     padding: 6px 14px;
     display: flex;
     flex-direction: column;
     gap: 6px;
-    z-index: 20;
+    z-index: 30;
     flex-shrink: 0;
   }
   .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .brand {
     display: flex;
@@ -104,68 +106,132 @@
   }
   .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
   .btn-sm.active-toggle {
-    background: rgba(0, 210, 255, 0.2);
+    background: rgba(0, 210, 255, 0.22);
     border-color: var(--accent);
     color: #fff;
   }
 
-  /* Main Three-Column Workspace */
+  /* Main Full-Screen Workspace with Slide-Out Drawers */
   .app-body {
     flex: 1;
-    display: flex;
+    position: relative;
     overflow: hidden;
-    position: relative;
+    width: 100%;
+    height: 100%;
   }
 
-  /* Left Control Panel */
-  .control-panel {
-    width: 350px;
-    min-width: 320px;
-    background: var(--panel-bg);
-    border-right: 1px solid var(--panel-border);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    z-index: 10;
-  }
-  .control-panel::-webkit-scrollbar,
-  .explanation-panel::-webkit-scrollbar { width: 5px; }
-  .control-panel::-webkit-scrollbar-thumb,
-  .explanation-panel::-webkit-scrollbar-thumb { background: #283655; border-radius: 3px; }
-
-  /* Center 3D / 2D Visualisation Area */
+  /* Center 100% Full-Screen 3D Visualisation Area */
   .vis-area {
-    flex: 1;
-    position: relative;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     background: radial-gradient(circle at center, #0d1526 0%, #050810 100%);
     overflow: hidden;
+    z-index: 1;
   }
   #canvas-container {
     width: 100%;
     height: 100%;
   }
-  #canvas-2d-overlay {
+
+  /* Left Slide-Out Control Drawer */
+  .control-panel {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    display: none;
-    z-index: 3;
-    cursor: grab;
+    bottom: 0;
+    width: 350px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 20;
+    box-shadow: 8px 0 28px rgba(0, 0, 0, 0.6);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .control-panel.closed {
+    transform: translateX(-100%);
   }
 
-  /* Right Mathematical Explanation Panel */
+  /* Right Slide-Out Mathematical Explanation Drawer */
   .explanation-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
     width: 340px;
-    min-width: 300px;
     background: var(--panel-bg);
+    backdrop-filter: blur(12px);
     border-left: 1px solid var(--panel-border);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    z-index: 10;
+    z-index: 20;
+    box-shadow: -8px 0 28px rgba(0, 0, 0, 0.6);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
+  .explanation-panel.closed {
+    transform: translateX(100%);
+  }
+
+  .control-panel::-webkit-scrollbar,
+  .explanation-panel::-webkit-scrollbar { width: 5px; }
+  .control-panel::-webkit-scrollbar-thumb,
+  .explanation-panel::-webkit-scrollbar-thumb { background: #283655; border-radius: 3px; }
+
+  /* Floating Edge Handle Tabs for Quick Drawer Open/Close */
+  .drawer-tab-left {
+    position: absolute;
+    top: 50%;
+    left: 350px;
+    transform: translateY(-50%);
+    background: #131c31;
+    border: 1px solid var(--accent);
+    border-left: none;
+    color: var(--accent);
+    padding: 12px 7px;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+    z-index: 25;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    box-shadow: 4px 0 14px rgba(0,0,0,0.5);
+    transition: left 0.28s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s;
+    user-select: none;
+  }
+  .drawer-tab-left:hover { background: var(--accent); color: #040811; }
+  .drawer-tab-left.closed { left: 0px; }
+
+  .drawer-tab-right {
+    position: absolute;
+    top: 50%;
+    right: 340px;
+    transform: translateY(-50%);
+    background: #131c31;
+    border: 1px solid var(--accent);
+    border-right: none;
+    color: var(--accent);
+    padding: 12px 7px;
+    border-radius: 8px 0 0 8px;
+    cursor: pointer;
+    z-index: 25;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    box-shadow: -4px 0 14px rgba(0,0,0,0.5);
+    transition: right 0.28s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s;
+    user-select: none;
+  }
+  .drawer-tab-right:hover { background: var(--accent); color: #040811; }
+  .drawer-tab-right.closed { right: 0px; }
 
   .panel-sec {
     padding: 12px 14px;
@@ -231,6 +297,7 @@
     border-radius: 4px;
     font-family: var(--font-mono);
     font-size: 12px;
+    width: 100%;
     outline: none;
   }
   .num-box input:focus, .full-input:focus { border-color: var(--accent); }
@@ -296,33 +363,39 @@
     margin-top: 6px;
   }
 
-  /* Floating Toolbars in Visualisation Area */
+  /* Floating Toolbars in Visualisation Area (Automatically shift with drawers) */
   .vis-toolbar {
     position: absolute;
     top: 10px;
-    right: 10px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     gap: 5px;
     background: rgba(15, 21, 35, 0.92);
     backdrop-filter: blur(8px);
-    padding: 6px 8px;
+    padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid var(--panel-border);
-    z-index: 6;
+    z-index: 10;
     flex-wrap: wrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.45);
   }
   .legend-box {
     position: absolute;
     top: 10px;
-    left: 10px;
-    background: rgba(15, 21, 35, 0.9);
+    left: 362px;
+    background: rgba(15, 21, 35, 0.88);
     backdrop-filter: blur(8px);
     padding: 8px 12px;
     border-radius: 8px;
     border: 1px solid var(--panel-border);
-    font-size: 11.5px;
-    z-index: 6;
+    font-size: 11px;
+    z-index: 10;
     pointer-events: none;
+    transition: left 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .legend-box.left-closed {
+    left: 14px;
   }
   .leg-row {
     display: flex;
@@ -332,26 +405,31 @@
     font-family: var(--font-mono);
   }
   .leg-dot {
-    width: 11px;
-    height: 11px;
+    width: 10px;
+    height: 10px;
     border-radius: 2px;
     flex-shrink: 0;
   }
   .status-bar {
     position: absolute;
     bottom: 12px;
-    left: 12px;
+    left: 50%;
+    transform: translateX(-50%);
     background: rgba(8, 12, 21, 0.94);
     border: 1px solid var(--accent);
-    padding: 7px 12px;
+    padding: 7px 14px;
     border-radius: 6px;
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11.5px;
     color: #f8fafc;
-    z-index: 6;
+    z-index: 10;
+    white-space: nowrap;
+    max-width: 94vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
   }
 
-  /* Table for Unit Vectors & Coordinate Comparison */
   .vec-table {
     width: 100%;
     border-collapse: collapse;
@@ -369,7 +447,6 @@
     color: var(--accent);
   }
 
-  /* Custom Element List Item */
   .el-item {
     display: flex;
     justify-content: space-between;
@@ -391,7 +468,10 @@
       <span>3D COORDINATE SYSTEMS &amp; VECTOR LAB</span>
       <span class="sub">Interactive 1D / 2D / 3D Physics &amp; Vector Calculus Visualiser</span>
     </div>
-    <div style="display:flex; gap:6px; align-items:center;">
+    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <button class="btn-sm active-toggle" id="btn-left-drawer" onclick="toggleLeftDrawer()">◧ Controls Drawer</button>
+      <button class="btn-sm active-toggle" id="btn-right-drawer" onclick="toggleRightDrawer()">◨ Math Drawer</button>
+      <button class="btn-sm" id="btn-clean-view" onclick="toggleCleanGraphMode()" title="Hide both drawers for 100% clean graph view">👁 Clean Graph Only</button>
       <button class="btn-sm" id="btn-angle-unit" onclick="toggleAngleUnit()">Angles: DEG (°)</button>
       <button class="btn-sm" id="btn-cam-proj" onclick="toggleCameraProjection()">Camera: Perspective</button>
       <button class="btn-sm" id="btn-anim-toggle" onclick="toggleAnimation()">▶ Animate Line</button>
@@ -399,7 +479,7 @@
     </div>
   </div>
 
-  <!-- 10 Dedicated Learning Modules Bar -->
+  <!-- 12 Dedicated Learning Modules Bar -->
   <div class="module-bar">
     <button class="mod-btn active" id="mod-dim" onclick="selectModule('dim')">1. Dimensionality (1D/2D/3D)</button>
     <button class="mod-btn" id="mod-cartesian" onclick="selectModule('cartesian')">2. Cartesian (x, y, z)</button>
@@ -417,8 +497,8 @@
 </header>
 
 <div class="app-body">
-  <!-- LEFT CONTROL PANEL -->
-  <aside class="control-panel">
+  <!-- LEFT SLIDE-OUT CONTROL DRAWER -->
+  <aside class="control-panel" id="left-drawer">
 
     <!-- UNIVERSAL PHYSICAL POINT P CONTROLLER -->
     <div class="panel-sec" id="sec-point-controls">
@@ -480,7 +560,7 @@
         </div>
       </div>
 
-      <!-- Direct Numeric Entry Row (Accepts expressions like sqrt(50) or acos(5/sqrt(50))) -->
+      <!-- Direct Numeric Entry Row -->
       <div class="sec-title" style="margin-top:8px;"><span>Manual Coordinate / Expression Entry</span></div>
       <div class="num-grid">
         <div class="num-box">
@@ -502,9 +582,7 @@
     </div>
 
     <!-- DYNAMIC MODULE-SPECIFIC CONTROLS -->
-    <div class="panel-sec" id="sec-module-controls">
-      <!-- Populated dynamically based on active module -->
-    </div>
+    <div class="panel-sec" id="sec-module-controls"></div>
 
     <!-- GLOBAL VISIBILITY TOGGLES -->
     <div class="panel-sec" style="border-bottom:none;">
@@ -520,12 +598,15 @@
         <label class="chk-lbl"><input type="checkbox" id="chk-grid" checked onchange="refreshScene()"> Axes &amp; Grid</label>
       </div>
     </div>
-
   </aside>
 
-  <!-- CENTER VISUALISATION AREA -->
+  <!-- Left Drawer Side Handle Tab -->
+  <div class="drawer-tab-left" id="tab-left-handle" onclick="toggleLeftDrawer()" title="Click to Open/Close Controls Drawer">
+    ◀ CONTROLS
+  </div>
+
+  <!-- CENTER 100% FULL-SCREEN VISUALISATION AREA -->
   <main class="vis-area">
-    <canvas id="canvas-2d-overlay"></canvas>
     <div id="canvas-container"></div>
 
     <!-- Legend Box -->
@@ -534,7 +615,7 @@
       <div id="legend-content"></div>
     </div>
 
-    <!-- Camera & Dimension Toolbar -->
+    <!-- Centered Camera Preset Toolbar -->
     <div class="vis-toolbar">
       <button class="btn-sm" onclick="setCameraPreset('iso')">3D Isometric</button>
       <button class="btn-sm" onclick="setCameraPreset('top')">Top (X-Y)</button>
@@ -549,99 +630,124 @@
     </div>
   </main>
 
-  <!-- RIGHT MATHEMATICAL EXPLANATION & CONVERSION PANEL -->
-  <aside class="explanation-panel">
+  <!-- Right Drawer Side Handle Tab -->
+  <div class="drawer-tab-right" id="tab-right-handle" onclick="toggleRightDrawer()" title="Click to Open/Close Math & Conversions Drawer">
+    MATH &amp; INFO ▶
+  </div>
+
+  <!-- RIGHT SLIDE-OUT MATHEMATICAL EXPLANATION & CONVERSION DRAWER -->
+  <aside class="explanation-panel" id="right-drawer">
     <div class="panel-sec">
       <div class="sec-title"><span>Live Coordinate Conversions</span></div>
-      <div class="math-card" id="card-conversions">
-        <!-- Populated in real time -->
-      </div>
+      <div class="math-card" id="card-conversions"></div>
     </div>
 
     <div class="panel-sec">
       <div class="sec-title"><span>Orthonormal Unit Vectors at P</span></div>
-      <div class="math-card" id="card-unit-vectors">
-        <!-- Populated in real time -->
-      </div>
+      <div class="math-card" id="card-unit-vectors"></div>
     </div>
 
     <div class="panel-sec" style="border-bottom:none;">
       <div class="sec-title"><span>Physical &amp; Geometrical Intuition</span></div>
-      <div class="math-card" id="card-explanation">
-        <!-- Populated per module -->
-      </div>
+      <div class="math-card" id="card-explanation"></div>
     </div>
   </aside>
 </div>
 
 <script>
 /* ============================================================================
-   1. MATHEMATICAL & COORDINATE CONVERSION ENGINE (STRICT PHYSICS CONVENTION)
-   Spherical Convention:
-   - r = √(x² + y² + z²) >= 0
-   - θ (polar angle from +z axis): 0 <= θ <= π, θ = arccos(z / r)
-   - φ (azimuthal angle in xy-plane from +x axis): 0 <= φ < 2π (or atan2(y,x))
+   1. DRAWER SYSTEM CONTROLLERS (LEFT, RIGHT & CLEAN GRAPH ONLY)
+   ============================================================================ */
+let leftDrawerOpen = true;
+let rightDrawerOpen = true;
+
+function toggleLeftDrawer(forceState) {
+  leftDrawerOpen = typeof forceState === 'boolean' ? forceState : !leftDrawerOpen;
+  document.getElementById('left-drawer').classList.toggle('closed', !leftDrawerOpen);
+  const tab = document.getElementById('tab-left-handle');
+  tab.classList.toggle('closed', !leftDrawerOpen);
+  tab.textContent = leftDrawerOpen ? '◀ CONTROLS' : '▶ CONTROLS';
+  document.getElementById('btn-left-drawer').classList.toggle('active-toggle', leftDrawerOpen);
+  document.getElementById('legend-box').classList.toggle('left-closed', !leftDrawerOpen);
+  updateCleanButtonState();
+}
+
+function toggleRightDrawer(forceState) {
+  rightDrawerOpen = typeof forceState === 'boolean' ? forceState : !rightDrawerOpen;
+  document.getElementById('right-drawer').classList.toggle('closed', !rightDrawerOpen);
+  const tab = document.getElementById('tab-right-handle');
+  tab.classList.toggle('closed', !rightDrawerOpen);
+  tab.textContent = rightDrawerOpen ? 'MATH & INFO ▶' : '◀ MATH & INFO';
+  document.getElementById('btn-right-drawer').classList.toggle('active-toggle', rightDrawerOpen);
+  updateCleanButtonState();
+}
+
+function toggleCleanGraphMode() {
+  const bothClosed = !leftDrawerOpen && !rightDrawerOpen;
+  if (bothClosed) {
+    toggleLeftDrawer(true);
+    toggleRightDrawer(true);
+  } else {
+    toggleLeftDrawer(false);
+    toggleRightDrawer(false);
+  }
+}
+
+function updateCleanButtonState() {
+  const bothClosed = !leftDrawerOpen && !rightDrawerOpen;
+  const cleanBtn = document.getElementById('btn-clean-view');
+  cleanBtn.classList.toggle('active-toggle', bothClosed);
+  cleanBtn.textContent = bothClosed ? '👁 Show Panels' : '👁 Clean Graph Only';
+}
+
+/* ============================================================================
+   2. MATHEMATICAL & COORDINATE CONVERSION ENGINE (STRICT PHYSICS CONVENTION)
    ============================================================================ */
 const state = {
-  activeModule: 'dim', // 'dim'|'cartesian'|'polar'|'cylindrical'|'spherical'|'solidangle'|'unitvec'|'builder'|'compare'|'physics'|'guided'|'quiz'
-  dimMode: 3,          // 1, 2, or 3 (for Module 1 & 2)
-  inputMode: 'cartesian', // 'cartesian'|'cylindrical'|'spherical'
+  activeModule: 'dim',
+  dimMode: 3,
+  inputMode: 'cartesian',
   useDegrees: true,
   orthoCamera: false,
 
-  // Single ground-truth physical point in Cartesian coordinates
   x: 3.0,
   y: 4.0,
   z: 5.0,
 
-  // Coordinate Surfaces toggles & slider constants
   surfXOn: false, surfXVal: 3.0,
   surfYOn: false, surfYVal: 4.0,
   surfZOn: false, surfZVal: 5.0,
   surfRhoOn: true, surfRhoVal: 5.0,
-  surfPhiOn: false, surfPhiVal: 53.1301, // deg
+  surfPhiOn: false, surfPhiVal: 53.1301,
   surfSphROn: true, surfSphRVal: 7.0711,
-  surfSphThetaOn: false, surfSphThetaVal: 45.0, // deg
+  surfSphThetaOn: false, surfSphThetaVal: 45.0,
 
-  // Projections toggles
   projXY: true,
   projYZ: false,
   projXZ: false,
   projAxes: true,
 
-  // Solid Angle (Module 6) state
-  solidSubmode: 'cone', // 'cone' | 'patch'
+  solidSubmode: 'cone',
   coneHalfAngleDeg: 60.0,
   sphereRadiusR: 4.0,
   patchDistR: 4.5,
   patchTiltGammaDeg: 30.0,
   patchAreaDA: 1.5,
 
-  // Unit Vector Orthogonality pair selector (Module 7)
-  orthoPair: '1-2', // '1-2', '2-3', '1-3', '1-1'
+  orthoPair: '1-2',
   showCartComponents: false,
 
-  // Custom Builder (Module 8)
   customElements: [],
-
-  // Physics Applications (Module 10)
-  physApp: 'circular', // 'linear'|'circular'|'helical'|'planetary'|'efield'|'bfield'|'flux'
-
-  // Guided Lesson index (Module 11)
+  physApp: 'circular',
   lessonIdx: 0,
-
-  // Quiz state (Module 12)
   quizIdx: 0,
   quizScore: 0,
   quizAttempted: false,
 
-  // Animation along coordinate lines
   animating: false,
-  animTarget: 'phi', // 'x'|'y'|'z'|'rho'|'phi'|'r'|'theta'
   animTime: 0
 };
 
-// Safe expression evaluator for inputs like "sqrt(50)", "acos(5/sqrt(50))", "atan2(4,3)", "5*pi/4"
 function evalMathInput(str, isAngleField = false) {
   let s = String(str).trim()
     .replace(/−/g, '-')
@@ -665,8 +771,6 @@ function evalMathInput(str, isAngleField = false) {
   if (typeof val !== 'number' || !isFinite(val)) {
     throw new Error(`Expression "${str}" evaluated to an undefined number.`);
   }
-  // If user entered an inverse trig formula like acos(5/sqrt(50)) which returns radians
-  // while display is in Degrees, detect if raw string used acos/asin/atan2
   if (isAngleField && state.useDegrees && /acos|asin|atan/i.test(str)) {
     return val * (180 / Math.PI);
   }
@@ -676,25 +780,20 @@ function evalMathInput(str, isAngleField = false) {
 function degToRad(d) { return d * Math.PI / 180; }
 function radToDeg(r) { return r * 180 / Math.PI; }
 function formatAngle(rad) {
-  if ( isNaN(rad) ) return 'Undefined';
+  if (isNaN(rad)) return 'Undefined';
   return state.useDegrees ? `${radToDeg(rad).toFixed(2)}°` : `${rad.toFixed(4)} rad`;
 }
 
-// Compute all coordinate representations & orthonormal basis vectors at (x, y, z)
 function getPointData(x, y, z) {
   const rho = Math.hypot(x, y);
   const r = Math.hypot(x, y, z);
   const onZAxis = rho < 1e-7;
   const atOrigin = r < 1e-7;
 
-  // Azimuthal angle phi in (-pi, pi] and normalized [0, 2pi)
   const phiRad = onZAxis ? 0 : Math.atan2(y, x);
   const phiPosRad = phiRad < 0 ? phiRad + 2 * Math.PI : phiRad;
-
-  // Spherical polar angle theta in [0, pi]
   const thetaRad = atOrigin ? 0 : Math.acos(Math.max(-1, Math.min(1, z / r)));
 
-  // Unit vectors in Cartesian components (î, ĵ, k̂)
   const cPhi = Math.cos(phiRad), sPhi = Math.sin(phiRad);
   const cTheta = Math.cos(thetaRad), sTheta = Math.sin(thetaRad);
 
@@ -719,10 +818,10 @@ function getPointData(x, y, z) {
 }
 
 /* ============================================================================
-   2. THREE.JS 3D SCENE SETUP (Z-UP SCIENTIFIC CONVENTION)
+   3. THREE.JS 3D SCENE SETUP (100% FULL WINDOW)
    ============================================================================ */
 let scene, camera, perspCam, orthoCam, renderer, controls;
-let axesGroup, mainVisGroup, customGroup, labelSprites = [];
+let axesGroup, mainVisGroup, customGroup;
 
 function initThreeJS() {
   const container = document.getElementById('canvas-container');
@@ -799,7 +898,7 @@ function clearGroup(grp) {
 }
 
 /* ============================================================================
-   3. HIGH-CONTRAST 3D LABELS, ARROWS, ARCS & COORDINATE AXES
+   4. HIGH-CONTRAST 3D LABELS, ARROWS, ARCS & COORDINATE AXES
    ============================================================================ */
 function makeLabel(text, colorStr = '#f8fafc', scale = 1.0) {
   const canvas = document.createElement('canvas');
@@ -824,7 +923,7 @@ function makeLabel(text, colorStr = '#f8fafc', scale = 1.0) {
   return sprite;
 }
 
-function makeVectorArrow(origin, dirVec, length, colorHex, labelText = '', dashed = false) {
+function makeVectorArrow(origin, dirVec, length, colorHex, labelText = '') {
   const grp = new THREE.Group();
   const dir = new THREE.Vector3(dirVec.x, dirVec.y, dirVec.z);
   if (dir.lengthSq() < 1e-9 || length < 1e-4) return grp;
@@ -883,7 +982,6 @@ function buildAxesAndGrid() {
                (state.activeModule === 'cartesian' && state.dimMode === 2) ||
                state.activeModule === 'polar';
 
-  // Build 1x1 unit square grid in XY plane (for 2D and 3D)
   if (!is1D) {
     const subVerts = [], majVerts = [];
     const zOff = -0.01;
@@ -909,7 +1007,6 @@ function buildAxesAndGrid() {
   const axisLen = L + 1.2;
   const rCyl = 0.025;
 
-  // X Axis (Red)
   const xGeo = new THREE.CylinderGeometry(rCyl, rCyl, axisLen * 2, 10);
   xGeo.rotateZ(-Math.PI / 2);
   axesGroup.add(new THREE.Mesh(xGeo, new THREE.MeshBasicMaterial({ color: 0xff4d6d })));
@@ -923,7 +1020,6 @@ function buildAxesAndGrid() {
     axesGroup.add(nxLbl);
   }
 
-  // Y Axis (Green)
   if (!is1D) {
     const yGeo = new THREE.CylinderGeometry(rCyl, rCyl, axisLen * 2, 10);
     axesGroup.add(new THREE.Mesh(yGeo, new THREE.MeshBasicMaterial({ color: 0x00f59b })));
@@ -932,7 +1028,6 @@ function buildAxesAndGrid() {
     axesGroup.add(yLbl);
   }
 
-  // Z Axis (Blue)
   if (!is1D && !is2D) {
     const zGeo = new THREE.CylinderGeometry(rCyl, rCyl, axisLen * 2, 10);
     zGeo.rotateX(Math.PI / 2);
@@ -942,7 +1037,6 @@ function buildAxesAndGrid() {
     axesGroup.add(zLbl);
   }
 
-  // Integer Tick Numbers (1, 2, 3, 4, 5...)
   for (let i = -L; i <= L; i++) {
     if (i === 0) continue;
     const tx = makeLabel(String(i), '#cbd5e1', 0.62);
@@ -962,13 +1056,12 @@ function buildAxesAndGrid() {
 }
 
 /* ============================================================================
-   4. SCENE RENDERERS FOR ALL 12 MODULES
+   5. SCENE RENDERERS FOR ALL 12 MODULES
    ============================================================================ */
 function refreshScene() {
   clearGroup(mainVisGroup);
   buildAxesAndGrid();
 
-  // Enforce 1D or 2D projections when in 1D/2D modes
   let px = state.x, py = state.y, pz = state.z;
   const is1D = (state.activeModule === 'dim' && state.dimMode === 1) || (state.activeModule === 'cartesian' && state.dimMode === 1);
   const is2D = (state.activeModule === 'dim' && state.dimMode === 2) ||
@@ -980,7 +1073,6 @@ function refreshScene() {
 
   const pData = getPointData(px, py, pz);
 
-  // Singularity warning check
   const warnEl = document.getElementById('singularity-banner');
   if (pData.atOrigin) {
     warnEl.style.display = 'block';
@@ -992,21 +1084,18 @@ function refreshScene() {
     warnEl.style.display = 'none';
   }
 
-  // Special Module 6: Solid Angle
   if (state.activeModule === 'solidangle') {
     renderSolidAngleModule();
     updateSidePanels(pData);
     return;
   }
 
-  // Special Module 10: Physics Applications
   if (state.activeModule === 'physics') {
     renderPhysicsModule(pData);
     updateSidePanels(pData);
     return;
   }
 
-  // 1. Draw Movable Point P (Crisp Core + Halo)
   const ptGroup = new THREE.Group();
   ptGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 20), new THREE.MeshBasicMaterial({ color: 0xffffff })));
   ptGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 20), new THREE.MeshBasicMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.85 })));
@@ -1019,24 +1108,19 @@ function refreshScene() {
     mainVisGroup.add(pLbl);
   }
 
-  // 2. Position Vector OP
   if (document.getElementById('chk-pos-vec').checked && pData.r > 1e-4) {
     mainVisGroup.add(makeVectorArrow({ x: 0, y: 0, z: 0 }, { x: px, y: py, z: pz }, pData.r, 0xffffff, 'r (OP)'));
   }
 
-  // 3. Coordinate Projections (Planes & Axes)
   if (document.getElementById('chk-projections').checked) {
     if (is1D) {
-      // 1D Number line unit vectors +î and -î
       mainVisGroup.add(makeVectorArrow({ x: 0, y: 0.4, z: 0 }, { x: 1, y: 0, z: 0 }, 1.0, 0x00f59b, '+î'));
       mainVisGroup.add(makeVectorArrow({ x: 0, y: 0.4, z: 0 }, { x: -1, y: 0, z: 0 }, 1.0, 0xff4d6d, '-î'));
     } else if (is2D) {
       mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: 0 }, { x: px, y: 0, z: 0 }, 0xff4d6d));
       mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: 0 }, { x: 0, y: py, z: 0 }, 0x00f59b));
-      // Angle arc theta in XY plane
       drawAzimuthArc(pData.phiPosRad, Math.min(1.8, pData.rho * 0.45), 0xa855f7, 'θ');
     } else {
-      // 3D Projections onto xy, yz, xz planes and axes
       if (state.projXY) {
         mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: pz }, { x: px, y: py, z: 0 }, 0x38bdf8));
         mainVisGroup.add(makeDashedSegment({ x: 0, y: 0, z: 0 }, { x: px, y: py, z: 0 }, 0xfacc15));
@@ -1055,7 +1139,6 @@ function refreshScene() {
       if (state.projXZ) {
         mainVisGroup.add(makeDashedSegment({ x: px, y: py, z: pz }, { x: px, y: 0, z: pz }, 0x00f59b));
       }
-      // Azimuthal arc phi in XY plane & polar arc theta from +Z axis
       if (pData.rho > 0.2) {
         drawAzimuthArc(pData.phiPosRad, Math.min(2.0, pData.rho * 0.45), 0xa855f7, 'φ');
       }
@@ -1065,17 +1148,14 @@ function refreshScene() {
     }
   }
 
-  // 4. Coordinate Lines through P
   if (document.getElementById('chk-coord-lines').checked && !is1D) {
     renderCoordinateLinesForActiveSystem(pData, is2D);
   }
 
-  // 5. Coordinate Surfaces (Planes, Cylinders, Cones, Spheres)
   if (document.getElementById('chk-coord-surfs').checked && !is1D) {
     renderCoordinateSurfacesForActiveSystem(pData, is2D);
   }
 
-  // 6. Orthonormal Basis Unit Vectors at P
   if (document.getElementById('chk-unit-vecs').checked) {
     renderUnitVectorsAtP(pData, is1D, is2D);
   }
@@ -1129,7 +1209,6 @@ function renderCoordinateLinesForActiveSystem(p, is2D) {
   const L = 8;
   const mod = state.activeModule;
 
-  // Cartesian coordinate lines (x-line, y-line, z-line intersecting at P)
   if (mod === 'cartesian' || mod === 'dim' || mod === 'compare') {
     const xLine = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-L, p.y, p.z), new THREE.Vector3(L, p.y, p.z)]);
     mainVisGroup.add(new THREE.Line(xLine, new THREE.LineBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.55 })));
@@ -1141,9 +1220,7 @@ function renderCoordinateLinesForActiveSystem(p, is2D) {
     }
   }
 
-  // Polar / Cylindrical coordinate lines: radial ray, circle of radius rho at height z, vertical z line
   if (mod === 'polar' || mod === 'cylindrical' || mod === 'compare') {
-    // 1. Circle r/rho = const at height z
     if (p.rho > 0.05) {
       const cPts = [];
       for (let i = 0; i <= 90; i++) {
@@ -1152,28 +1229,23 @@ function renderCoordinateLinesForActiveSystem(p, is2D) {
       }
       mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(cPts), new THREE.LineBasicMaterial({ color: 0xa855f7 })));
     }
-    // 2. Radial ray phi = const at height z
     const rPts = [
       new THREE.Vector3(0, 0, p.z),
       new THREE.Vector3(L * Math.cos(p.phiRad), L * Math.sin(p.phiRad), p.z)
     ];
     mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rPts), new THREE.LineBasicMaterial({ color: 0xfacc15 })));
-    // 3. Vertical line (for cylindrical)
     if (!is2D) {
       const zPts = [new THREE.Vector3(p.x, p.y, -L), new THREE.Vector3(p.x, p.y, L)];
       mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(zPts), new THREE.LineBasicMaterial({ color: 0x38bdf8 })));
     }
   }
 
-  // Spherical coordinate lines: radial ray, meridian arc (theta varies), latitude circle (phi varies)
   if (mod === 'spherical' || mod === 'compare') {
     if (p.r > 0.05) {
-      // 1. Radial line
       const radDir = p.basis.rHat;
       const rPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(radDir.x * L * 1.2, radDir.y * L * 1.2, radDir.z * L * 1.2)];
       mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rPts), new THREE.LineBasicMaterial({ color: 0xfacc15 })));
 
-      // 2. Meridian semicircle (theta from 0 to pi at fixed r and phi)
       const mPts = [];
       for (let i = 0; i <= 60; i++) {
         const t = (Math.PI * i) / 60;
@@ -1185,7 +1257,6 @@ function renderCoordinateLinesForActiveSystem(p, is2D) {
       }
       mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(mPts), new THREE.LineBasicMaterial({ color: 0xfb923c })));
 
-      // 3. Azimuthal latitude circle (phi from 0 to 2pi at fixed r and theta)
       const latPts = [];
       for (let i = 0; i <= 90; i++) {
         const a = (2 * Math.PI * i) / 90;
@@ -1200,7 +1271,6 @@ function renderCoordinateSurfacesForActiveSystem(p, is2D) {
   const L = 8;
   const mod = state.activeModule;
 
-  // Cartesian Planes: x = c, y = c, z = c
   if (mod === 'cartesian' || mod === 'compare') {
     if (state.surfXOn) {
       const g = new THREE.PlaneGeometry(2 * L, 2 * L);
@@ -1227,7 +1297,6 @@ function renderCoordinateSurfacesForActiveSystem(p, is2D) {
     }
   }
 
-  // Cylindrical Surfaces: Cylinder rho = const, Half-plane phi = const, Horizontal plane z = const
   if (mod === 'cylindrical') {
     if (state.surfRhoOn && state.surfRhoVal > 0.05) {
       const cylGeo = new THREE.CylinderGeometry(state.surfRhoVal, state.surfRhoVal, 2 * L, 48, 1, true);
@@ -1253,7 +1322,6 @@ function renderCoordinateSurfacesForActiveSystem(p, is2D) {
     }
   }
 
-  // Spherical Surfaces: Sphere r = const, Cone theta = const, Half-plane phi = const
   if (mod === 'spherical') {
     if (state.surfSphROn && state.surfSphRVal > 0.05) {
       const sphGeo = new THREE.SphereGeometry(state.surfSphRVal, 40, 30);
@@ -1263,7 +1331,6 @@ function renderCoordinateSurfacesForActiveSystem(p, is2D) {
     if (state.surfSphThetaOn) {
       const tRad = degToRad(state.surfSphThetaVal);
       if (Math.abs(tRad - Math.PI / 2) < 0.03) {
-        // Limiting case theta = 90 deg is the XY plane
         const g = new THREE.PlaneGeometry(2 * L, 2 * L);
         mainVisGroup.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xfb923c, side: THREE.DoubleSide, transparent: true, opacity: 0.2, depthWrite: false })));
       } else if (tRad > 0.03 && tRad < Math.PI - 0.03) {
@@ -1294,27 +1361,23 @@ function renderUnitVectorsAtP(p, is1D, is2D) {
   const mod = state.activeModule;
   const compareCart = document.getElementById('chk-cart-compare').checked;
 
-  // Always show Cartesian basis if in Cartesian mode or Compare toggle is active
   if (mod === 'cartesian' || mod === 'dim' || compareCart || (mod === 'unitvec' && state.inputMode === 'cartesian')) {
     mainVisGroup.add(makeVectorArrow(origin, p.basis.iHat, len, 0xff4d6d, 'î'));
     if (!is1D) mainVisGroup.add(makeVectorArrow(origin, p.basis.jHat, len, 0x00f59b, 'ĵ'));
     if (!is1D && !is2D) mainVisGroup.add(makeVectorArrow(origin, p.basis.kHat, len, 0x38bdf8, 'k̂'));
   }
 
-  // Polar 2D unit vectors r̂ and θ̂
   if (mod === 'polar') {
     mainVisGroup.add(makeVectorArrow(origin, p.basis.rhoHat, len, 0xfacc15, 'r̂'));
     mainVisGroup.add(makeVectorArrow(origin, p.basis.phiHat, len, 0xa855f7, 'θ̂'));
   }
 
-  // Cylindrical unit vectors ρ̂, φ̂, ẑ
   if (mod === 'cylindrical' || mod === 'compare' || (mod === 'unitvec' && state.inputMode === 'cylindrical')) {
     mainVisGroup.add(makeVectorArrow(origin, p.basis.rhoHat, len, 0xfacc15, 'ρ̂'));
     mainVisGroup.add(makeVectorArrow(origin, p.basis.phiHat, len, 0xa855f7, 'φ̂'));
     mainVisGroup.add(makeVectorArrow(origin, p.basis.zHat, len, 0x38bdf8, 'ẑ'));
   }
 
-  // Spherical unit vectors r̂, θ̂, φ̂
   if (mod === 'spherical' || mod === 'compare' || (mod === 'unitvec' && state.inputMode === 'spherical')) {
     mainVisGroup.add(makeVectorArrow(origin, p.basis.rHat, len, 0xfacc15, 'r̂'));
     mainVisGroup.add(makeVectorArrow(origin, p.basis.thetaHat, len, 0xfb923c, 'θ̂'));
@@ -1323,14 +1386,13 @@ function renderUnitVectorsAtP(p, is1D, is2D) {
 }
 
 /* ============================================================================
-   5. MODULE 6: SOLID ANGLE (2D ANGLE VS 3D STERADIAN CONE & ARBITRARY PATCH dA)
+   6. MODULE 6 & MODULE 10: SOLID ANGLE & PHYSICS APPLICATIONS
    ============================================================================ */
 function renderSolidAngleModule() {
   const R = state.sphereRadiusR;
   const alphaRad = degToRad(state.coneHalfAngleDeg);
 
   if (state.solidSubmode === 'cone') {
-    // 1. Left side (-5, 0, 0): 2D Ordinary Planar Angle θ = 2α on a circle
     const c2dOrigin = new THREE.Vector3(-5.2, 0, 0);
     const circlePts = [];
     for (let i = 0; i <= 80; i++) {
@@ -1339,7 +1401,6 @@ function renderSolidAngleModule() {
     }
     mainVisGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(circlePts), new THREE.LineBasicMaterial({ color: 0x475569 })));
 
-    // Highlighted 2D sector arc
     const arcPts = [c2dOrigin.clone()];
     for (let i = 0; i <= 40; i++) {
       const a = -alphaRad + (2 * alphaRad * i) / 40;
@@ -1351,7 +1412,6 @@ function renderSolidAngleModule() {
     lbl2d.position.set(c2dOrigin.x, c2dOrigin.y, R * 0.85);
     mainVisGroup.add(lbl2d);
 
-    // 2. Right side (+2.5, 0, 0): 3D Sphere + Solid Angle Spherical Cap Ω = 2π(1 - cos α)
     const c3dOrigin = new THREE.Vector3(2.5, 0, 0);
     const wireSphere = new THREE.Mesh(
       new THREE.SphereGeometry(R, 32, 24),
@@ -1360,17 +1420,14 @@ function renderSolidAngleModule() {
     wireSphere.position.copy(c3dOrigin);
     mainVisGroup.add(wireSphere);
 
-    // Spherical Cap Patch cut out by cone of half-angle alpha around +Z
     if (alphaRad > 0.01) {
       const capGeo = new THREE.SphereGeometry(R * 1.005, 48, 32, 0, Math.PI * 2, 0, alphaRad);
-      // SphereGeometry polar angle starts from +Y by default; rotate X by 90 deg so cap is centered on +Z
       capGeo.rotateX(Math.PI / 2);
       const capMat = new THREE.MeshPhongMaterial({ color: 0x00d2ff, side: THREE.DoubleSide, transparent: true, opacity: 0.72, shininess: 70 });
       const capMesh = new THREE.Mesh(capGeo, capMat);
       capMesh.position.copy(c3dOrigin);
       mainVisGroup.add(capMesh);
 
-      // Boundary rays of the cone from O to cap rim
       const numRays = 12;
       for (let k = 0; k < numRays; k++) {
         const phi = (2 * Math.PI * k) / numRays;
@@ -1388,7 +1445,6 @@ function renderSolidAngleModule() {
     lbl3d.position.set(c3dOrigin.x, c3dOrigin.y, R + 0.8);
     mainVisGroup.add(lbl3d);
   } else {
-    // Arbitrary Tilted Surface Element dA at distance R with normal tilted by angle gamma
     const dist = state.patchDistR;
     const gammaRad = degToRad(state.patchTiltGammaDeg);
     const side = Math.sqrt(state.patchAreaDA);
@@ -1400,7 +1456,6 @@ function renderSolidAngleModule() {
     patchMesh.position.copy(patchCenter);
     mainVisGroup.add(patchMesh);
 
-    // Projected area perpendicular to line of sight
     const projSide = side * Math.abs(Math.cos(gammaRad));
     if (projSide > 0.02) {
       const projGeo = new THREE.PlaneGeometry(side, projSide);
@@ -1410,7 +1465,6 @@ function renderSolidAngleModule() {
       mainVisGroup.add(projMesh);
     }
 
-    // Radial line R and surface normal vector n̂
     mainVisGroup.add(makeVectorArrow({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, dist, 0xfacc15, `R = ${dist.toFixed(1)}`));
     const nDir = { x: Math.cos(gammaRad), y: 0, z: Math.sin(gammaRad) };
     mainVisGroup.add(makeVectorArrow(patchCenter, nDir, 1.8, 0xff4d6d, 'n̂ (Normal)'));
@@ -1418,18 +1472,13 @@ function renderSolidAngleModule() {
   }
 }
 
-/* ============================================================================
-   6. MODULE 10: PHYSICS APPLICATIONS VISUALISER
-   ============================================================================ */
 function renderPhysicsModule(p) {
   const app = state.physApp;
   if (app === 'efield') {
-    // Point Charge +Q at origin and radial electric field vectors E = (kQ/r²) r̂
     const qSphere = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), new THREE.MeshPhongMaterial({ color: 0xff4d6d, shininess: 90 }));
     mainVisGroup.add(qSphere);
     mainVisGroup.add(makeLabel('+Q', '#ff4d6d', 0.9));
 
-    // Radial field arrows on concentric shells
     const dirs = [
       [1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1],
       [0.7,0.7,0], [-0.7,0.7,0], [0.7,-0.7,0], [-0.7,-0.7,0]
@@ -1439,14 +1488,12 @@ function renderPhysicsModule(p) {
       mainVisGroup.add(makeVectorArrow(v.clone().multiplyScalar(1.2), v, 1.5, 0xfacc15));
     });
 
-    // Observation point P and E(P) along r̂
     const pt = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00d2ff }));
     pt.position.set(p.x, p.y, p.z);
     mainVisGroup.add(pt);
     const eMag = Math.min(3.0, 25 / Math.max(1, p.r * p.r));
     mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.rHat, eMag, 0x00f59b, 'E = E(r) r̂'));
   } else if (app === 'bfield') {
-    // Current-carrying wire along Z-axis and azimuthal B-field rings B = (μ₀I / 2πρ) φ̂
     const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 16, 16), new THREE.MeshPhongMaterial({ color: 0xfb923c }));
     wire.rotation.x = Math.PI / 2;
     mainVisGroup.add(wire);
@@ -1463,7 +1510,6 @@ function renderPhysicsModule(p) {
     mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.phiHat, 2.0, 0x00f59b, 'B = B(ρ) φ̂'));
     mainVisGroup.add(makeVectorArrow({ x: p.x, y: p.y, z: p.z }, p.basis.rhoHat, 1.3, 0xfacc15, 'ρ̂'));
   } else {
-    // Circular / Helical / Planetary trajectory with live velocity & unit vectors
     const pts = [];
     for (let i = 0; i <= 120; i++) {
       const t = (2 * Math.PI * i) / 60;
@@ -1750,7 +1796,6 @@ function updateSidePanels(p) {
     `Cylindrical: (ρ=${p.rho.toFixed(2)}, φ=${formatAngle(p.phiPosRad)}, z=${p.z.toFixed(2)}) | ` +
     `Spherical: (r=${p.r.toFixed(2)}, θ=${formatAngle(p.thetaRad)}, φ=${formatAngle(p.phiPosRad)})`;
 
-  // 1. Conversions Card
   document.getElementById('card-conversions').innerHTML = `
     <h4>Same Physical Point in All 3 Systems</h4>
     <div class="formula-block">
@@ -1771,7 +1816,6 @@ function updateSidePanels(p) {
     </div>
   `;
 
-  // 2. Unit Vectors Table Card
   const b = p.basis;
   const fmtV = v => `(${v.x.toFixed(2)}î ${v.y>=0?'+':''}${v.y.toFixed(2)}ĵ ${v.z>=0?'+':''}${v.z.toFixed(2)}k̂)`;
   document.getElementById('card-unit-vectors').innerHTML = `
@@ -1787,7 +1831,6 @@ function updateSidePanels(p) {
     </table>
   `;
 
-  // 3. Legend & Contextual Explanation
   const legItems = [
     { col: '#ff4d6d', txt: 'X-Axis / î / x-proj' },
     { col: '#00f59b', txt: 'Y-Axis / ĵ / y-proj' },
@@ -1819,7 +1862,7 @@ function updateSidePanels(p) {
 }
 
 /* ============================================================================
-   9. INPUT & SLIDER SYNCHRONIZATION (TESTS 1, 2, 3, 4, 11, 12)
+   9. INPUT & SLIDER SYNCHRONIZATION
    ============================================================================ */
 function setInputCoordMode(mode) {
   state.inputMode = mode;
@@ -1956,7 +1999,7 @@ function onManualCoordSubmit() {
 }
 
 /* ============================================================================
-   10. MODULE 8: CUSTOM BUILDER & SAVE / LOAD / EXPORT JSON (TEST 10 & 12)
+   10. MODULE 8: CUSTOM BUILDER & SAVE / LOAD / EXPORT JSON
    ============================================================================ */
 function rebuildCustomGroup() {
   clearGroup(customGroup);
@@ -2283,7 +2326,6 @@ function animate(now = performance.now()) {
       buildModuleControlsUI();
       refreshScene();
     } else {
-      // Rotate azimuthal angle phi smoothly along the circular coordinate line
       const p = getPointData(state.x, state.y, state.z);
       const newPhi = p.phiRad + dt * 1.1;
       const rho = Math.max(0.5, p.rho);
